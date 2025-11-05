@@ -1,0 +1,28 @@
+# pack-refs with: peeled fully-peeled sorted 
+84ad5b60d15759f0a5cace170b8ac7ced43c4dd3 refs/remotes/origin/SuperClaude-v1
+bf7ce0f60bad6b79d6e8174e3f164f965d469855 refs/remotes/origin/SuperClaude-v2
+8f12b19a220aabf23680ee86b6d6ab21c46ba6f6 refs/remotes/origin/SuperClaude-v3
+b25f60cdb0cad059113b7191a40875e65fb8eb45 refs/remotes/origin/SuperClaude_V4_Backup
+bea4bfe289f298e790da4746212474d3ed2b0ed8 refs/remotes/origin/master
+95366b1dcbaca0154ead510dd91380af60caa580 refs/remotes/origin/release/4.0.8
+1e5818acf95c3176a013290281f877036e7d8bbb refs/remotes/origin/revert-357-master
+73fe01c4be1da7dd7ee23519ac6c99dc82c802e9 refs/remotes/origin/revert-447-feature/framework-improvements
+84ad5b60d15759f0a5cace170b8ac7ced43c4dd3 refs/tags/v1.0.0
+e0779ca2890d31edfeca900a04853afe9fa39173 refs/tags/v4.0.3
+^8605ef06f0c72fbfacda7cc61a71c02290550e12
+73db08557a6931e51ee86d9c41f24c2e1dfbf205 refs/tags/v4.0.4
+^418683c265465b51ba92b8f9b66455e2c385b5dd
+c220886e8f626fd234c2cb41368d7e4ea11fb4b8 refs/tags/v4.0.6
+^81a1fbeb39dcc96b4fa48d115e280c69b636d02f
+ee9635d3b2daf219f073106aa64b7a542d4a8d93 refs/tags/v4.0.7
+^45bc5b8a988a9ba01fd3ac693903756a861ddbfc
+13aa2ec53191f97b815e2afaaf527e29db456d22 refs/tags/v4.0.8
+^8ccc71f877d9b29f04099ae8053f7c6fa487b6aa
+b9985e0fe6c8d720ab50acaf5d23547148aa611c refs/tags/v4.0.9
+fb609c6a065d0143ef014b08e93b33b742c44fa5 refs/tags/v4.1.0
+e7b8a7d06e280b0a96b8d4f91676f088f346db33 refs/tags/v4.1.1
+5ec40fcc20200616c01cb0cc3cc8745d396f07ef refs/tags/v4.1.2
+8cf810adb9f71ad72056707333c129f486db727d refs/tags/v4.1.3
+e4f2f82aa9dd17d20ce58532d62fbb226a85389e refs/tags/v4.1.4
+fdfb05e981f3c93bc06375141006cc9bd60d3087 refs/tags/v4.1.5
+7c14a31bc367ac4496d328159673ba6716870219 refs/tags/v4.1.6
