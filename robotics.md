@@ -1,41 +1,48 @@
-🧠 Robotics Software Intern — NVIDIA (AI & Simulation)
-Location: Santa Clara, CA | Hybrid
-Program Duration: 12 Weeks | Summer 2026
-Reports to: Senior Research Scientist, Robotics AI
-
+Data Science Intern - McKinsey & Company
 About the Role
-At NVIDIA, we’re building the brains of intelligent machines. As a Robotics Software Intern, you’ll help develop AI-based motion planning, perception, and simulation tools used by developers and researchers worldwide. You’ll work on cloud-scale simulation and reinforcement learning pipelines that enable robots to learn and adapt safely in virtual environments before they touch the real world.
+We are seeking Data Science interns to join McKinsey's Analytics practice. You'll work on client projects across various industries, using data and analytics to solve complex business problems and drive strategic decision-making for leading organizations worldwide.
+Responsibilities
 
-What You’ll Do
-Design and implement robotic simulation scenarios using Isaac Sim and Omniverse Kit.
+Analyze client data to uncover insights and inform recommendations
+Build models and frameworks to support business strategy
+Create compelling visualizations and presentations for client deliverables
+Support quantitative analysis for consulting engagements
+Collaborate with consulting teams on case work
+Communicate findings clearly to both technical and non-technical audiences
 
-Develop or optimize AI-based control algorithms (e.g., path planning, imitation learning).
+Qualifications
 
-Collect and process synthetic datasets for perception model training (vision, depth, LiDAR).
+Currently pursuing a Bachelor's degree in Data Science, Statistics, Economics, Mathematics, Computer Science, or related quantitative field
+Strong analytical and problem-solving skills
+Proficiency in Python, R, or similar analytical tools
+Experience with data analysis and statistical methods
+Knowledge of SQL for data manipulation
+Excellent communication and presentation skills
+Strong business acumen and client-facing mindset
 
-Work with GPU-accelerated compute libraries for real-time physics or control.
+Nice to Have
 
-Collaborate with ML researchers to benchmark models in sim-to-real pipelines.
+Exposure to business strategy or consulting concepts
+Experience with data visualization tools (Tableau, Power BI)
+Coursework in economics, business, or finance
+Previous internship experience in consulting or analytics
+Familiarity with machine learning concepts
 
-Present findings and results at internal research demos or publications.
+Technical Skills
 
-What We’re Looking For
-Pursuing a B.S./M.S. in Computer Science, Robotics, or Applied Mathematics.
+Python or R
+SQL
+Statistics and data analysis
+Excel and PowerPoint
+Data visualization
 
-Strong proficiency in Python + C++, and comfort with PyTorch / TensorFlow.
+What You'll Gain
 
-Knowledge of robot kinematics, motion planning, and control theory.
+Exposure to diverse industries and business challenges
+Experience working on real client engagements
+Mentorship from consultants and data scientists
+Development of business strategy and analytical skills
+Professional presentation and communication training
 
-Familiarity with ROS 2 and Isaac Sim / Gazebo / Unity robotics environments.
 
-Strong linear algebra and probability background (for sensor fusion, optimization).
-
-Bonus Skills
-Experience with CUDA, RL frameworks (e.g., RLlib, Isaac Gym).
-
-Contributions to open-source robotics or ML projects.
-
-Research experience in sim-to-real transfer or vision-based control.
-
-Why NVIDIA?
-You’ll help power the future of autonomous systems by working at the intersection of robotics, AI, and simulation — on the same platforms that enable self-driving cars, factory automation, and humanoid robotics
+McKinsey & Company is an equal opportunity employer committed to diversity and inclusion.
