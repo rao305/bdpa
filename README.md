@@ -383,13 +383,40 @@ The database includes the following tables:
 
 All tables use Row Level Security (RLS) to ensure users can only access their own data.
 
-## 🚀 Production Build
+## 🚀 Production Build & Deployment
+
+### Local Production Build
 
 ```bash
 cd frontend/bdpafrontend-main
 npm run build
 npm run start
 ```
+
+### Netlify Deployment
+
+The project includes Netlify configuration files for easy deployment:
+
+1. **Connect your GitHub repository to Netlify**
+2. **Build Settings** (should auto-detect):
+   - **Base directory**: `frontend/bdpafrontend-main`
+   - **Build command**: `npm install && npm run build`
+   - **Publish directory**: `.next`
+   - **Node version**: 18
+
+3. **Environment Variables**:
+   Add these in Netlify dashboard → Site settings → Environment variables:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+4. **Netlify Plugin**:
+   The `@netlify/plugin-nextjs` plugin is configured in `netlify.toml` and will be automatically installed during build.
+
+5. **Deploy**: Click "Deploy site" and Netlify will handle the rest.
+
+**Note**: The Netlify Next.js plugin automatically handles routing for Next.js 13 App Router, so no manual redirects are needed.
 
 ## 🔒 Security Features
 
