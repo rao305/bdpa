@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+// import { Progress } from '@/components/ui/progress'; // Temporarily disabled due to build issue
 import { CheckCircle, AlertTriangle, Info, Lightbulb, Target } from 'lucide-react';
 import { DetailedScores, StrengthsAndWeaknesses, ActionableRecommendations } from '@/lib/advanced-scoring';
 
@@ -397,7 +397,12 @@ export default function VisualScoringDashboard({
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Analysis Confidence</span>
             <div className="flex items-center gap-2">
-              <Progress value={confidenceLevel} className="w-20 h-2" />
+              <div className="w-20 h-2 bg-secondary rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary transition-all" 
+                  style={{ width: `${confidenceLevel}%` }}
+                />
+              </div>
               <span className="font-medium">{confidenceLevel}%</span>
             </div>
           </div>
