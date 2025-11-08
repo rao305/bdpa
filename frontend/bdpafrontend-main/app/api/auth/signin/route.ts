@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Return user without sensitive data
-    const { password: _, ...userWithoutPassword } = {
+    const userWithoutPassword = {
       id: data.user.id,
       email: data.user.email || '',
     };
