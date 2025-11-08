@@ -4,7 +4,6 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: { unoptimized: true },
-  output: 'standalone',
   experimental: {
     serverComponentsExternalPackages: ['pdf-parse', 'pdfjs-dist'],
   },
