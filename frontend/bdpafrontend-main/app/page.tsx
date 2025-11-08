@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase, hasSupabaseCredentials } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Target, TrendingUp, BookOpen, BarChart3 } from 'lucide-react';
@@ -16,22 +16,41 @@ export default function Home() {
   }, []);
 
   const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
 
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('first_time')
-        .eq('uid', user.id)
-        .maybeSingle();
+      if (user) {
+        // Check profile via API
+        try {
+          const response = await fetch('/api/profile');
+          if (response.ok) {
+            const data = await response.json();
+            const profile = data.profile;
 
-      if (profile?.first_time) {
+            // If profile incomplete, go to onboarding (data collection)
+            if (!profile || profile.first_time) {
+              router.push('/onboarding');
+              return;
+            } else {
+              // Profile complete - go to analyze role page (analyzer)
+              router.push('/analyze');
+              return;
+            }
+          }
+        } catch (error) {
+          console.log('Profile check failed:', error);
+        }
+        
+        // If API check fails, default to onboarding (data collection)
         router.push('/onboarding');
       } else {
-        router.push('/dashboard');
+        // Not authenticated - redirect to sign in page
+        router.push('/auth');
       }
-    } else {
-      setLoading(false);
+    } catch (error) {
+      console.log('Auth check failed:', error);
+      // On error, redirect to sign in
+      router.push('/auth');
     }
   };
 
@@ -161,9 +180,17 @@ export default function Home() {
         </div>
 
         <div className="text-center mt-16 pt-8 border-t">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mb-4">
             Built for students and professionals seeking their next opportunity
           </p>
+          <div className="flex justify-center gap-4">
+            <Button variant="link" onClick={() => router.push('/admin/seed')} className="text-xs">
+              🛠 Demo Setup
+            </Button>
+            <Button variant="link" onClick={() => window.open('https://github.com', '_blank')} className="text-xs">
+              📖 Documentation
+            </Button>
+          </div>
         </div>
       </div>
     </div>

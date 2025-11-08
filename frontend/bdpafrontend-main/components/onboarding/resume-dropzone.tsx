@@ -15,21 +15,30 @@ export function ResumeDropzone({ onTextExtracted }: ResumeDropzoneProps) {
   const extractText = async (file: File) => {
     setExtracting(true);
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-
-      let text = '';
-      for (let i = 0; i < uint8Array.length; i++) {
-        const char = String.fromCharCode(uint8Array[i]);
-        if (char.match(/[a-zA-Z0-9\s\.,;:\-\(\)\/\\]/)) {
-          text += char;
-        }
+      // Upload file to API for proper PDF parsing
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to upload and parse PDF');
       }
-
-      onTextExtracted(text || 'Resume uploaded successfully');
+      
+      if (data.text && data.text.length >= 50) {
+        onTextExtracted(data.text);
+      } else {
+        throw new Error('Could not extract sufficient text from PDF');
+      }
     } catch (error) {
       console.error('Error extracting text:', error);
-      onTextExtracted('Resume uploaded successfully');
+      alert(error instanceof Error ? error.message : 'Failed to parse PDF. Please try again or enter skills manually.');
+      setExtracting(false);
     } finally {
       setExtracting(false);
     }

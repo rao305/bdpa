@@ -17,27 +17,23 @@ export default function SeedPage() {
     setResult(null);
 
     try {
-      for (const role of seedRoles) {
-        const { error } = await supabase
-          .from('roles')
-          .upsert(role, { onConflict: 'id' });
+      const response = await fetch('/api/seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
 
-        if (error) throw error;
+      const data = await response.json();
+
+      if (response.ok) {
+        setResult({ 
+          success: true, 
+          message: `Successfully seeded ${data.counts.roles} roles and ${data.counts.resources} resources!` 
+        });
+      } else {
+        setResult({ success: false, message: data.error || 'Seeding failed' });
       }
-
-      for (const resource of seedResources) {
-        const { error } = await supabase
-          .from('resources')
-          .insert(resource);
-
-        if (error && !error.message.includes('duplicate')) {
-          console.error('Resource error:', error);
-        }
-      }
-
-      setResult({ success: true, message: 'Database seeded successfully!' });
     } catch (error: any) {
-      setResult({ success: false, message: error.message });
+      setResult({ success: false, message: error.message || 'Network error during seeding' });
     } finally {
       setLoading(false);
     }

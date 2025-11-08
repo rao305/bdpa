@@ -1,85 +1,8 @@
 import { normalizeSkills, extractSkillsFromText } from './normalization';
+import { RealMarketAnalysisEngine } from './market-analysis';
 
-// Market demand data from our analysis (skills with their job market mentions)
-const MARKET_DEMAND: Record<string, number> = {
-  // Cross-industry high-demand skills
-  'python': 22016,
-  'javascript': 9661,
-  'sql': 18322,
-  'git': 6420,
-  'problem solving': 38396,
-  'communication': 85424,
-  'teamwork': 54183,
-  
-  // AI/ML Industry
-  'machine learning': 8500,
-  'data analysis': 27577,
-  'pandas': 4200,
-  'numpy': 3800,
-  'statistics': 6200,
-  'jupyter notebooks': 1800,
-  'scikit-learn': 2100,
-  'data visualization': 5600,
-  
-  // Data Analyst
-  'excel': 18674,
-  'tableau': 3200,
-  'power bi': 2800,
-  'data cleaning': 4100,
-  
-  // Backend SWE
-  'rest apis': 4500,
-  'databases': 8900,
-  'java': 19827,
-  'node.js': 7800,
-  'linux': 7029,
-  'unit testing': 3200,
-  'cloud': 6891,
-  
-  // Frontend SWE  
-  'html': 5600,
-  'css': 5400,
-  'react': 8200,
-  'typescript': 6100,
-  'responsive design': 2100,
-  'figma': 1400,
-  
-  // DevOps
-  'docker': 5832,
-  'kubernetes': 3400,
-  'aws': 11735,
-  'azure': 6936,
-  'bash scripting': 2200,
-  'ci/cd': 4100,
-  'monitoring': 3800,
-  
-  // Robotics
-  'c++': 575843, // Very high due to system programming
-  'ros': 37313,
-  'matlab': 4500,
-  'embedded systems': 3200,
-  'control systems': 2800,
-  'sensors': 1900,
-  
-  // Game Dev
-  'c#': 8200,
-  'unity': 4600,
-  'game design': 1200,
-  'object-oriented programming': 5600,
-  '3d modeling': 800,
-  'scripting': 3400,
-};
-
-// Industry weights based on our market analysis
-const INDUSTRY_WEIGHTS: Record<string, number> = {
-  'Robotics': 2.0,      // Highest demand but specialized
-  'Data': 1.5,          // Strong consistent demand
-  'Backend': 1.5,       // Stable career path
-  'DevOps': 1.8,        // Growing field with good coverage
-  'AI/ML': 1.6,         // High potential but competitive
-  'Frontend': 1.2,      // Moderate but steady demand
-  'Game Dev': 1.2,      // Niche but passion-driven
-};
+// Market demand and industry weights are now loaded dynamically
+// via RealMarketAnalysisEngine from /api/market-data
 
 export interface GapAnalysisInput {
   userSkills: string[];
@@ -145,8 +68,11 @@ export function analyzeSkillGaps(input: GapAnalysisInput): GapAnalysisResult {
   // Extract skills from job description
   const jdSkills = extractSkillsFromText(input.jdText, input.dictionary);
   
+  // Initialize market analysis engine with provided market data or load dynamically
+  const marketEngine = new RealMarketAnalysisEngine(input.marketData);
+  
   // Calculate gaps
-  const skillGaps = calculateSkillGaps(input, userSkillSet, jdSkills);
+  const skillGaps = calculateSkillGaps(input, userSkillSet, jdSkills, marketEngine);
   
   // Categorize gaps by severity
   const criticalGaps = skillGaps.filter(g => g.gapSeverity === 'critical');
@@ -164,7 +90,7 @@ export function analyzeSkillGaps(input: GapAnalysisInput): GapAnalysisResult {
   const longTermGoals = identifyLongTermGoals(skillGaps);
   
   // Generate industry insights
-  const industryInsights = generateIndustryInsights(input.roleCategory, userSkillSet, jdSkills);
+  const industryInsights = generateIndustryInsights(input.roleCategory, userSkillSet, jdSkills, marketEngine);
   
   // Create learning recommendations
   const learningRecommendations = generateLearningRecommendations(
@@ -194,15 +120,17 @@ export function analyzeSkillGaps(input: GapAnalysisInput): GapAnalysisResult {
 function calculateSkillGaps(
   input: GapAnalysisInput,
   userSkills: Set<string>,
-  jdSkills: string[]
+  jdSkills: string[],
+  marketEngine: RealMarketAnalysisEngine
 ): SkillGap[] {
   const gaps: SkillGap[] = [];
-  const industryWeight = INDUSTRY_WEIGHTS[input.roleCategory] || 1.0;
+  // Industry weights are now dynamic - can be calculated from market data if needed
+  const industryWeight = 1.0; // Default, can be made dynamic based on market data
   
   // Analyze role requirements
   for (const req of input.roleRequirements) {
     if (!userSkills.has(req.skill)) {
-      const marketDemand = MARKET_DEMAND[req.skill] || 0;
+      const marketDemand = marketEngine.getMarketDemand(req.skill);
       const weightedDemand = marketDemand * industryWeight;
       
       gaps.push({
@@ -222,7 +150,7 @@ function calculateSkillGaps(
   // Analyze additional JD skills
   for (const skill of jdSkills) {
     if (!userSkills.has(skill) && !gaps.find(g => g.skill === skill)) {
-      const marketDemand = MARKET_DEMAND[skill] || 0;
+      const marketDemand = marketEngine.getMarketDemand(skill);
       if (marketDemand > 1000) { // Only include skills with significant demand
         gaps.push({
           skill,
@@ -405,14 +333,15 @@ function identifyLongTermGoals(gaps: SkillGap[]): SkillGap[] {
 function generateIndustryInsights(
   roleCategory: string,
   userSkills: Set<string>,
-  jdSkills: string[]
+  jdSkills: string[],
+  marketEngine: RealMarketAnalysisEngine
 ): {
   marketPosition: string;
   competitiveAdvantage: string[];
   trendingSkills: string[];
   salaryImpact: string;
 } {
-  const marketPosition = getMarketPosition(roleCategory, userSkills);
+  const marketPosition = getMarketPosition(roleCategory, userSkills, marketEngine);
   const competitiveAdvantage = getCompetitiveAdvantage(userSkills, roleCategory);
   const trendingSkills = getTrendingSkills(roleCategory);
   const salaryImpact = getSalaryImpact(userSkills, roleCategory);
@@ -425,18 +354,34 @@ function generateIndustryInsights(
   };
 }
 
-function getMarketPosition(roleCategory: string, userSkills: Set<string>): string {
-  const categoryInsights: Record<string, string> = {
-    'AI/ML': `AI/ML has ${MARKET_DEMAND['machine learning']} job mentions. High growth but competitive field.`,
-    'Data': `Data Analysis has ${MARKET_DEMAND['data analysis']} mentions. Strong, accessible entry path.`,
-    'Backend': `Backend development has consistent demand with ${MARKET_DEMAND['java']} Java mentions.`,
-    'Frontend': `Frontend has moderate visibility but high actual demand in market.`,
-    'DevOps': `DevOps is fastest-growing with ${MARKET_DEMAND['aws']} AWS mentions.`,
-    'Robotics': `Robotics has highest demand (${MARKET_DEMAND['c++']} C++ mentions) but specialized.`,
-    'Game Dev': `Game development is niche but passion-driven market.`,
+function getMarketPosition(roleCategory: string, userSkills: Set<string>, marketEngine: RealMarketAnalysisEngine): string {
+  const categoryInsights: Record<string, (engine: RealMarketAnalysisEngine) => string> = {
+    'AI/ML': (engine) => {
+      const mlDemand = engine.getMarketDemand('machine learning');
+      return `AI/ML has ${mlDemand.toLocaleString()} job mentions. High growth but competitive field.`;
+    },
+    'Data': (engine) => {
+      const dataDemand = engine.getMarketDemand('data analysis');
+      return `Data Analysis has ${dataDemand.toLocaleString()} mentions. Strong, accessible entry path.`;
+    },
+    'Backend': (engine) => {
+      const javaDemand = engine.getMarketDemand('java');
+      return `Backend development has consistent demand with ${javaDemand.toLocaleString()} Java mentions.`;
+    },
+    'Frontend': () => 'Frontend has moderate visibility but high actual demand in market.',
+    'DevOps': (engine) => {
+      const awsDemand = engine.getMarketDemand('aws');
+      return `DevOps is fastest-growing with ${awsDemand.toLocaleString()} AWS mentions.`;
+    },
+    'Robotics': (engine) => {
+      const cppDemand = engine.getMarketDemand('c++');
+      return `Robotics has highest demand (${cppDemand.toLocaleString()} C++ mentions) but specialized.`;
+    },
+    'Game Dev': () => 'Game development is niche but passion-driven market.',
   };
   
-  return categoryInsights[roleCategory] || 'Market analysis not available for this category.';
+  const insightFn = categoryInsights[roleCategory];
+  return insightFn ? insightFn(marketEngine) : 'Market analysis not available for this category.';
 }
 
 function getCompetitiveAdvantage(userSkills: Set<string>, roleCategory: string): string[] {
@@ -572,4 +517,4 @@ function calculateConfidenceScore(input: GapAnalysisInput, gapsFound: number): n
   return Math.min(95, confidence); // Cap at 95%
 }
 
-export { MARKET_DEMAND, INDUSTRY_WEIGHTS };
+// MARKET_DEMAND and INDUSTRY_WEIGHTS are now loaded dynamically via RealMarketAnalysisEngine

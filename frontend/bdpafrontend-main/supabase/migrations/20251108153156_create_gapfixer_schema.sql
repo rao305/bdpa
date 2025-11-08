@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   coursework text[] DEFAULT '{}',
   experience jsonb[] DEFAULT '{}',
   target_category text,
+  resume_text text,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );

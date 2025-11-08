@@ -677,4 +677,62 @@ export function trackLearningProgress(
   };
 }
 
+// Simple 14-day learning plan generator for API compatibility
+export function generateLearningPlan(missingSkills: Array<{ skill: string; weight: number; priority: string; resources: any[] }>): Array<{ day: number; task: string; skill: string }> {
+  const plan: Array<{ day: number; task: string; skill: string }> = [];
+  
+  // Sort by priority and weight
+  const sortedSkills = missingSkills
+    .sort((a, b) => {
+      if (a.priority === 'required' && b.priority !== 'required') return -1;
+      if (a.priority !== 'required' && b.priority === 'required') return 1;
+      return b.weight - a.weight;
+    })
+    .slice(0, 3); // Focus on top 3 skills
+
+  let currentDay = 1;
+  
+  for (const skill of sortedSkills) {
+    const skillDays = skill.priority === 'required' ? 5 : 3;
+    const resources = (skill.resources || []).slice(0, 2); // Top 2 resources per skill
+    
+    for (let i = 0; i < skillDays && currentDay <= 14; i++) {
+      let task = '';
+      
+      if (i === 0) {
+        task = `Start learning ${skill.skill}`;
+      } else if (i === 1 && resources[0]) {
+        task = `Complete: ${resources[0].title}`;
+      } else if (i === 2 && resources[1]) {
+        task = `Work through: ${resources[1].title}`;
+      } else if (i === 3) {
+        task = `Practice ${skill.skill} with hands-on exercises`;
+      } else {
+        task = `Build a small project using ${skill.skill}`;
+      }
+      
+      plan.push({
+        day: currentDay,
+        task,
+        skill: skill.skill
+      });
+      
+      currentDay++;
+    }
+  }
+  
+  // Fill remaining days with practice and review
+  while (currentDay <= 14) {
+    const skillToReview = sortedSkills[Math.floor(Math.random() * sortedSkills.length)];
+    plan.push({
+      day: currentDay,
+      task: `Review and practice ${skillToReview.skill}`,
+      skill: skillToReview.skill
+    });
+    currentDay++;
+  }
+  
+  return plan;
+}
+
 export { RESOURCE_DATABASE };

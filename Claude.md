@@ -42,13 +42,7 @@
 
 ## 2) Roles (Hardcoded Examples)
 
-* AI/ML Intern
-* Data Analyst Intern
-* Backend SWE Intern
-* Frontend SWE Intern
-* DevOps Intern
-* Robotics Intern
-* Game Dev Intern
+
 
 Each role has: `title`, `description`, and `requirements[{skill, weight(1|2), bucket}]` where `bucket ∈ {Language, Framework/Concept, Tool, Soft}`.
 

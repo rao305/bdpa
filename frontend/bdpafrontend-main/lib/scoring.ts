@@ -1,4 +1,6 @@
 import { normalizeSkills, extractSkillsFromText } from './normalization';
+import { MLAnalysisEngine } from './ml-engine';
+import { RealMarketAnalysisEngine } from './market-analysis';
 
 export interface ScoringInput {
   userSkills: string[];
@@ -8,6 +10,8 @@ export interface ScoringInput {
   dictionary: Set<string>;
   resumeProvided?: boolean;
   resumeText?: string;
+  roleCategory?: string;
+  marketData?: { marketData?: Record<string, number>; skillCombinations?: Record<string, string[]>; emergingTech?: string[] };
 }
 
 export interface ScoringResult {
@@ -22,6 +26,19 @@ export interface ScoringResult {
   improvements: string[];
   missingSkills: Array<{ skill: string; weight: number; priority: string }>;
   meta: Record<string, any>;
+  marketAnalysis?: {
+    explanations: Array<{
+      skill: string;
+      reason: string;
+      marketDemand: number;
+      priority: string;
+    }>;
+    skillGaps: {
+      total: number;
+      critical: number;
+      learningPath: string;
+    };
+  };
 }
 
 export function computeScores(input: ScoringInput): ScoringResult {
@@ -37,17 +54,61 @@ export function computeScores(input: ScoringInput): ScoringResult {
     ? Math.round((100 * metRequired) / requiredSkills.length)
     : 100;
 
-  const jdSkills = extractSkillsFromText(input.jdText, input.dictionary);
-  const jdSkillSet = new Set(jdSkills);
-  const allRequiredTokens = new Set([...requiredSkills.map(r => r.skill), ...jdSkills]);
+  // Enhanced alignment scoring using ML engine if resume is provided
+  let alignment = 0;
+  let mlAnalysis = null;
+  let alignmentHits = 0;
+  let allRequiredTokens = new Set<string>();
+  let jdSkills: string[] = [];
+  
+  if (input.resumeProvided && input.resumeText) {
+    // Use ML engine for better alignment scoring
+    try {
+      const allSkills = Array.from(input.dictionary || []);
+      if (allSkills.length === 0) {
+        throw new Error('Dictionary is empty');
+      }
+      const mlEngine = new MLAnalysisEngine(allSkills);
+      mlAnalysis = mlEngine.analyzeResumeJobMatch(
+        input.resumeText || '',
+        input.jdText || '',
+        input.roleRequirements || []
+      );
+      alignment = mlAnalysis.alignmentScore;
+      // Extract jdSkills for later use (if ML engine succeeded)
+      jdSkills = extractSkillsFromText(input.jdText || '', input.dictionary);
+      const jdSkillSet = new Set(jdSkills);
+      allRequiredTokens = new Set([...requiredSkills.map(r => r.skill), ...jdSkills]);
+      alignmentHits = Array.from(allRequiredTokens).filter(
+        token => userSkillSet.has(token)
+      ).length;
+    } catch (mlError) {
+      console.error('ML engine error, falling back to simple matching:', mlError);
+      // Fallback to simple keyword matching if ML engine fails
+      jdSkills = extractSkillsFromText(input.jdText || '', input.dictionary);
+      const jdSkillSet = new Set(jdSkills);
+      allRequiredTokens = new Set([...requiredSkills.map(r => r.skill), ...jdSkills]);
+      alignmentHits = Array.from(allRequiredTokens).filter(
+        token => userSkillSet.has(token)
+      ).length;
+      alignment = allRequiredTokens.size > 0
+        ? Math.round((100 * alignmentHits) / allRequiredTokens.size)
+        : 0;
+    }
+  } else {
+    // Fallback to simple keyword matching
+    jdSkills = extractSkillsFromText(input.jdText, input.dictionary);
+    const jdSkillSet = new Set(jdSkills);
+    allRequiredTokens = new Set([...requiredSkills.map(r => r.skill), ...jdSkills]);
 
-  const alignmentHits = Array.from(allRequiredTokens).filter(
-    token => userSkillSet.has(token)
-  ).length;
+    alignmentHits = Array.from(allRequiredTokens).filter(
+      token => userSkillSet.has(token)
+    ).length;
 
-  const alignment = allRequiredTokens.size > 0
-    ? Math.round((100 * alignmentHits) / allRequiredTokens.size)
-    : 0;
+    alignment = allRequiredTokens.size > 0
+      ? Math.round((100 * alignmentHits) / allRequiredTokens.size)
+      : 0;
+  }
 
   let ats = 0;
   let impact = 0;
@@ -61,15 +122,27 @@ export function computeScores(input: ScoringInput): ScoringResult {
     const hasBullets = (resume.match(/[•\-*]/g) || []).length >= 5 ? 20 : 0;
     const hasDates = (resume.match(/\d{4}/g) || []).length >= 2 ? 15 : 0;
     const hasActionVerbs = /\b(developed|built|led|managed|designed|implemented|created|analyzed)\b/i.test(resume) ? 25 : 0;
-    const hasKeywords = jdSkills.some(s => resume.includes(s)) ? 20 : 0;
+    const hasKeywords = (jdSkills || []).some(s => resume.includes(s)) ? 20 : 0;
 
     ats = hasHeaders + hasBullets + hasDates + hasActionVerbs + hasKeywords;
 
+    // More dynamic impact scoring based on actual resume content
     const internships = (resume.match(/intern/gi) || []).length;
-    const projectsWithMetrics = (resume.match(/\d+%|\d+x/g) || []).length;
+    const projectsWithMetrics = (resume.match(/\d+%|\d+x|\d+\s*(users|views|requests|queries)/gi) || []).length;
     const quantBullets = (resume.match(/\d+/g) || []).length;
-
-    impact = Math.min(100, 30 * internships + 20 * projectsWithMetrics + 5 * quantBullets);
+    
+    // Count technical achievements and project mentions
+    const projectMentions = (resume.match(/\b(project|built|developed|created|designed|implemented)\b/gi) || []).length;
+    const techAchievements = (resume.match(/\b(improved|optimized|reduced|increased|scaled|deployed)\b/gi) || []).length;
+    
+    // Calculate impact with more granular scoring
+    const internshipScore = Math.min(30, internships * 10);
+    const metricsScore = Math.min(25, projectsWithMetrics * 5);
+    const quantScore = Math.min(15, Math.floor(quantBullets / 5));
+    const projectScore = Math.min(15, Math.floor(projectMentions / 2));
+    const achievementScore = Math.min(15, Math.floor(techAchievements / 2));
+    
+    impact = Math.min(100, internshipScore + metricsScore + quantScore + projectScore + achievementScore);
 
     const hasSpacing = resume.includes('\n\n') ? 20 : 10;
     const bulletLength = 20;
@@ -84,6 +157,12 @@ export function computeScores(input: ScoringInput): ScoringResult {
       projectsWithMetrics,
       quantBullets,
       bulletCount: hasBullets > 0 ? Math.min(10, Math.floor(hasBullets / 2)) : 0,
+      mlAnalysis: mlAnalysis ? {
+        keywordMatches: mlAnalysis.keywordMatches,
+        missingKeywords: mlAnalysis.missingKeywords,
+        skillRelevanceScores: mlAnalysis.skillRelevanceScores,
+        recommendations: mlAnalysis.recommendations
+      } : null,
     };
   } else {
     ats = 0;
@@ -119,7 +198,7 @@ export function computeScores(input: ScoringInput): ScoringResult {
   if (metPreferred > 0) {
     strengths.push(`${metPreferred} bonus skills that make you stand out`);
   }
-  if (alignmentHits >= allRequiredTokens.size * 0.4) { // More generous for interns
+  if (allRequiredTokens.size > 0 && alignmentHits >= allRequiredTokens.size * 0.4) { // More generous for interns
     strengths.push('Skills align well with this internship opportunity');
   }
   if (userSkillSet.has('python') || userSkillSet.has('javascript')) {
@@ -129,18 +208,34 @@ export function computeScores(input: ScoringInput): ScoringResult {
     strengths.push('Version control experience - highly valued by employers');
   }
 
-  // Intern-focused improvements - actionable and encouraging
-  const improvements: string[] = [];
-  if (readiness < 50) {
-    improvements.push('Focus on learning the most essential required skills first');
-  } else if (readiness < 70) {
-    improvements.push('Strengthen proficiency in remaining required skills');
-  }
-  if (alignment < 40) {
-    improvements.push('Study the job description and learn key technologies mentioned');
-  } else if (alignment < 70) {
-    improvements.push('Continue building skills that match job requirements');
-  }
+  // Enhanced gap analysis with market prioritization
+  let missingSkills = input.roleRequirements
+    .filter(r => !userSkillSet.has(r.skill));
+
+  // Use real market analysis to prioritize skills and generate technical improvements
+  // Market data will be loaded dynamically or passed from API
+  const marketEngine = new RealMarketAnalysisEngine(input.marketData);
+  const prioritizedGaps = marketEngine.prioritizeSkillGaps(missingSkills);
+  
+  // Generate technical improvements based on real market data
+  const roleCategory = input.roleCategory || 'general';
+  const improvements = marketEngine.generateTechnicalImprovements(
+    missingSkills,
+    userSkillSet,
+    roleCategory,
+    readiness,
+    alignment
+  );
+  
+  // Generate market analysis explanations
+  const marketAnalysis = marketEngine.generateMarketAnalysisExplanations(
+    missingSkills,
+    userSkillSet,
+    roleCategory,
+    prioritizedGaps
+  );
+  
+  // Add resume-specific improvements if applicable
   if (input.resumeProvided && ats < 60) {
     improvements.push('Optimize resume with relevant keywords and clear formatting');
   }
@@ -149,14 +244,12 @@ export function computeScores(input: ScoringInput): ScoringResult {
   } else if (impact < 60) {
     improvements.push('Quantify your project achievements (e.g., "built app with 5 features")');
   }
-
-  const missingSkills = input.roleRequirements
-    .filter(r => !userSkillSet.has(r.skill))
-    .sort((a, b) => {
-      if (a.priority === 'required' && b.priority !== 'required') return -1;
-      if (a.priority !== 'required' && b.priority === 'required') return 1;
-      return b.weight - a.weight;
-    });
+  
+  missingSkills = prioritizedGaps.sort((a, b) => {
+    if (a.priority === 'required' && b.priority !== 'required') return -1;
+    if (a.priority !== 'required' && b.priority === 'required') return 1;
+    return b.marketPriority - a.marketPriority;
+  });
 
   return {
     readiness,
@@ -170,5 +263,6 @@ export function computeScores(input: ScoringInput): ScoringResult {
     improvements,
     missingSkills,
     meta,
+    marketAnalysis,
   };
 }

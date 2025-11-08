@@ -24,28 +24,43 @@ export default function ResultsPage() {
   }, [params.id]);
 
   const loadAnalysis = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/auth');
-      return;
-    }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/auth');
+        return;
+      }
 
-    const { data } = await supabase
-      .from('analyses')
-      .select('*')
-      .eq('id', params.id)
-      .eq('uid', user.id)
-      .maybeSingle();
+      // Use API endpoint instead of direct Supabase query
+      const response = await fetch(`/api/analyses/${params.id}`);
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/auth');
+          return;
+        }
+        if (response.status === 404) {
+          router.push('/analyze');
+          return;
+        }
+        throw new Error('Failed to load analysis');
+      }
 
-    if (!data) {
+      const data = await response.json();
+      const analysisData = data.analysis;
+
+      if (!analysisData) {
+        router.push('/analyze');
+        return;
+      }
+
+      setAnalysis(analysisData);
+      const foundRole = seedRoles.find((r) => r.id === analysisData.role_id);
+      setRole(foundRole);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading analysis:', error);
       router.push('/analyze');
-      return;
     }
-
-    setAnalysis(data);
-    const foundRole = seedRoles.find((r) => r.id === data.role_id);
-    setRole(foundRole);
-    setLoading(false);
   };
 
   const getReadinessLabel = (score: number) => {
@@ -241,38 +256,101 @@ export default function ResultsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {analysis.missing_skills.map((ms: any, i: number) => (
-                <div key={i} className="border-b pb-4 last:border-b-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium capitalize">{ms.skill}</h3>
-                      <Badge variant={ms.priority === 'required' ? 'destructive' : 'secondary'}>
-                        {ms.priority}
+              {analysis.missing_skills.map((ms: any, i: number) => {
+                // Find corresponding market analysis explanation
+                const marketExplanation = analysis.meta?.market_analysis?.explanations?.find(
+                  (exp: any) => exp.skill.toLowerCase() === ms.skill.toLowerCase()
+                );
+                
+                return (
+                  <div key={i} className="border-b pb-4 last:border-b-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium capitalize">{ms.skill}</h3>
+                        <Badge variant={ms.priority === 'required' ? 'destructive' : 'secondary'}>
+                          {ms.priority}
+                        </Badge>
+                        {marketExplanation && (
+                          <Badge variant="outline" className="text-xs">
+                            {marketExplanation.marketDemand.toLocaleString()}+ jobs
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    {marketExplanation && (
+                      <div className="mb-3 p-3 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Why {ms.skill}?</strong> {marketExplanation.reason}
+                        </p>
+                      </div>
+                    )}
+                    {ms.resources && ms.resources.length > 0 && (
+                      <div className="space-y-1 ml-4">
+                        {ms.resources.map((resource: any, j: number) => (
+                          <a
+                            key={j}
+                            href={resource.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-sm text-primary hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            {resource.title}
+                            <Badge variant="outline" className="text-xs">
+                              {resource.type}
+                            </Badge>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {analysis.meta?.market_analysis && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Market Analysis & Learning Path</CardTitle>
+            <CardDescription>
+              Personalized recommendations based on real job market data
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {analysis.meta.market_analysis.skillGaps && (
+              <div className="mb-4 p-4 bg-primary/5 rounded-lg">
+                <p className="text-sm font-medium mb-2">Recommended Learning Path:</p>
+                <p className="text-sm text-muted-foreground">
+                  {analysis.meta.market_analysis.skillGaps.learningPath}
+                </p>
+                <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+                  <span>Total gaps: {analysis.meta.market_analysis.skillGaps.total}</span>
+                  <span>Critical: {analysis.meta.market_analysis.skillGaps.critical}</span>
+                </div>
+              </div>
+            )}
+            {analysis.meta.market_analysis.explanations && analysis.meta.market_analysis.explanations.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm">Skill Recommendations Explained:</h4>
+                {analysis.meta.market_analysis.explanations.map((exp: any, i: number) => (
+                  <div key={i} className="p-3 border rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-medium capitalize">{exp.skill}</span>
+                      <Badge variant={exp.priority === 'required' ? 'destructive' : 'secondary'}>
+                        {exp.priority}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {exp.marketDemand.toLocaleString()}+ opportunities
                       </Badge>
                     </div>
+                    <p className="text-sm text-muted-foreground">{exp.reason}</p>
                   </div>
-                  {ms.resources && ms.resources.length > 0 && (
-                    <div className="space-y-1 ml-4">
-                      {ms.resources.map((resource: any, j: number) => (
-                        <a
-                          key={j}
-                          href={resource.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-primary hover:underline"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          {resource.title}
-                          <Badge variant="outline" className="text-xs">
-                            {resource.type}
-                          </Badge>
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

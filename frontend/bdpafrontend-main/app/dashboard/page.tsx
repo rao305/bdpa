@@ -56,20 +56,31 @@ export default function DashboardPage() {
   }, [analyses, roleFilter, dateFilter]);
 
   const loadData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/auth');
-      return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/auth');
+        return;
+      }
+
+      // Use API endpoint instead of direct Supabase query
+      const response = await fetch('/api/analyses');
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/auth');
+          return;
+        }
+        throw new Error('Failed to load analyses');
+      }
+
+      const data = await response.json();
+      setAnalyses(data.analyses || []);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading analyses:', error);
+      setAnalyses([]);
+      setLoading(false);
     }
-
-    const { data } = await supabase
-      .from('analyses')
-      .select('*')
-      .eq('uid', user.id)
-      .order('created_at', { ascending: false });
-
-    setAnalyses(data || []);
-    setLoading(false);
   };
 
   const applyFilters = () => {
@@ -100,7 +111,7 @@ export default function DashboardPage() {
     }
 
     const avgAlignment =
-      filteredAnalyses.reduce((sum, a) => sum + (a.subscores.alignment || 0), 0) /
+      filteredAnalyses.reduce((sum, a) => sum + (a.subscores?.alignment || 0), 0) /
       filteredAnalyses.length;
 
     const avgReadiness =
@@ -110,10 +121,10 @@ export default function DashboardPage() {
     const avgOverall =
       filteredAnalyses.reduce((sum, a) => {
         const overall = Math.round(
-          (a.subscores.alignment * 0.35 +
-            a.readiness_overall * 0.25 +
-            a.subscores.impact * 0.2 +
-            a.subscores.potential * 0.2) || 0
+          ((a.subscores?.alignment || 0) * 0.35 +
+            (a.readiness_overall || 0) * 0.25 +
+            (a.subscores?.impact || 0) * 0.2 +
+            (a.subscores?.potential || 0) * 0.2) || 0
         );
         return sum + overall;
       }, 0) / filteredAnalyses.length;
@@ -132,10 +143,10 @@ export default function DashboardPage() {
       .reverse()
       .map((a) => {
         const overall = Math.round(
-          (a.subscores.alignment * 0.35 +
-            a.readiness_overall * 0.25 +
-            a.subscores.impact * 0.2 +
-            a.subscores.potential * 0.2) || 0
+          ((a.subscores?.alignment || 0) * 0.35 +
+            (a.readiness_overall || 0) * 0.25 +
+            (a.subscores?.impact || 0) * 0.2 +
+            (a.subscores?.potential || 0) * 0.2) || 0
         );
         return {
           date: new Date(a.created_at).toLocaleDateString('en-US', {
@@ -151,19 +162,22 @@ export default function DashboardPage() {
     if (filteredAnalyses.length === 0) return [];
 
     const avgAts =
-      filteredAnalyses.reduce((sum, a) => sum + (a.subscores.ats || 0), 0) /
+      filteredAnalyses.reduce((sum, a) => sum + (a.subscores?.ats || 0), 0) /
       filteredAnalyses.length;
     const avgAlignment =
-      filteredAnalyses.reduce((sum, a) => sum + (a.subscores.alignment || 0), 0) /
+      filteredAnalyses.reduce((sum, a) => sum + (a.subscores?.alignment || 0), 0) /
       filteredAnalyses.length;
     const avgImpact =
-      filteredAnalyses.reduce((sum, a) => sum + (a.subscores.impact || 0), 0) /
+      filteredAnalyses.reduce((sum, a) => sum + (a.subscores?.impact || 0), 0) /
       filteredAnalyses.length;
     const avgPolish =
-      filteredAnalyses.reduce((sum, a) => sum + (a.subscores.polish || 0), 0) /
+      filteredAnalyses.reduce((sum, a) => sum + (a.subscores?.polish || 0), 0) /
       filteredAnalyses.length;
     const avgPotential =
-      filteredAnalyses.reduce((sum, a) => sum + (a.subscores.potential || 0), 0) /
+      filteredAnalyses.reduce((sum, a) => sum + (a.subscores?.potential || 0), 0) /
+      filteredAnalyses.length;
+    const avgReadiness =
+      filteredAnalyses.reduce((sum, a) => sum + (a.readiness_overall || 0), 0) /
       filteredAnalyses.length;
 
     return [
@@ -444,10 +458,10 @@ export default function DashboardPage() {
                   {filteredAnalyses.map((analysis) => {
                     const role = seedRoles.find((r) => r.id === analysis.role_id);
                     const overall = Math.round(
-                      (analysis.subscores.alignment * 0.35 +
-                        analysis.readiness_overall * 0.25 +
-                        analysis.subscores.impact * 0.2 +
-                        analysis.subscores.potential * 0.2) || 0
+                      ((analysis.subscores?.alignment || 0) * 0.35 +
+                        (analysis.readiness_overall || 0) * 0.25 +
+                        (analysis.subscores?.impact || 0) * 0.2 +
+                        (analysis.subscores?.potential || 0) * 0.2) || 0
                     );
                     return (
                       <TableRow
@@ -462,7 +476,7 @@ export default function DashboardPage() {
                         <TableCell>{analysis.jd_title}</TableCell>
                         <TableCell className="text-right font-medium">{overall}</TableCell>
                         <TableCell className="text-right">{analysis.readiness_overall}</TableCell>
-                        <TableCell className="text-right">{analysis.subscores.alignment}</TableCell>
+                        <TableCell className="text-right">{analysis.subscores?.alignment || 0}</TableCell>
                       </TableRow>
                     );
                   })}

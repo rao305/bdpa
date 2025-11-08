@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { normalizeSkills, extractSkillsFromText, buildDictionary } from '@/lib/normalization';
 import { seedRoles, seedResources } from '@/lib/seed-data';
+import { parseResumeText } from '@/lib/resume-parser';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -34,52 +35,196 @@ export default function OnboardingPage() {
   const [coursework, setCoursework] = useState<string[]>([]);
   const [experience, setExperience] = useState<Array<{ type: string; duration: string; description: string }>>([]);
   const [targetCategory, setTargetCategory] = useState('');
+  const [resumeText, setResumeText] = useState('');
 
   useEffect(() => {
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/auth');
+        return;
+      }
+      
+      // User is authenticated - show onboarding form
+      // Don't redirect away even if profile exists - let them complete/update it
+      setLoading(false);
+    } catch (error) {
+      console.error('Auth check error:', error);
       router.push('/auth');
-      return;
     }
-    setLoading(false);
   };
 
-  const handleResumeExtracted = (text: string) => {
-    const dictionary = buildDictionary(seedRoles, seedResources);
-    const extractedSkills = extractSkillsFromText(text, dictionary);
-    setSkills(extractedSkills);
-    setStep('details');
+  const handleResumeExtracted = async (text: string) => {
+    try {
+      const dictionary = buildDictionary(seedRoles, seedResources);
+      
+      // Parse resume to extract all information
+      const parsed = parseResumeText(text, dictionary);
+      
+      console.log('📄 Resume parsed successfully:', {
+        skillsCount: parsed.skills.length,
+        courseworkCount: parsed.coursework.length,
+        experienceCount: parsed.experience.length,
+        skills: parsed.skills.slice(0, 10),
+        coursework: parsed.coursework.slice(0, 5),
+      });
+      
+      // Normalize and auto-fill skills (ensure unique, properly formatted)
+      // First normalize for matching, then format for display
+      const normalizedSkills = normalizeSkills(parsed.skills);
+      // Format skills for better display (capitalize properly)
+      const formattedSkills = normalizedSkills.map(skill => {
+        // Handle special cases (e.g., "JavaScript", "C++", "Node.js")
+        if (skill.includes('javascript')) return 'JavaScript';
+        if (skill.includes('typescript')) return 'TypeScript';
+        if (skill.includes('python')) return 'Python';
+        if (skill.includes('java') && !skill.includes('javascript')) return 'Java';
+        if (skill.includes('c++')) return 'C++';
+        if (skill.includes('node.js') || skill.includes('nodejs')) return 'Node.js';
+        if (skill.includes('react')) return 'React';
+        if (skill.includes('tensorflow')) return 'TensorFlow';
+        if (skill.includes('pytorch')) return 'PyTorch';
+        if (skill.includes('machine learning')) return 'Machine Learning';
+        if (skill.includes('deep learning')) return 'Deep Learning';
+        if (skill.includes('data science')) return 'Data Science';
+        if (skill.includes('artificial intelligence')) return 'Artificial Intelligence';
+        // Capitalize first letter of each word
+        return skill.split(' ').map(word => 
+          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        ).join(' ');
+      });
+      const uniqueSkills = Array.from(new Set(formattedSkills.filter(s => s.length > 0)));
+      setSkills(uniqueSkills);
+      setResumeText(text);
+      
+      console.log('✅ Auto-filled skills:', uniqueSkills.length, 'skills:', uniqueSkills.slice(0, 10));
+      
+      // Auto-fill education
+      if (parsed.education.major) {
+        setMajor(parsed.education.major);
+        console.log('✅ Auto-filled major:', parsed.education.major);
+      }
+      if (parsed.education.year) {
+        // Calculate year level from graduation year
+        const currentYear = new Date().getFullYear();
+        const gradYear = parseInt(parsed.education.year);
+        const yearsUntilGrad = gradYear - currentYear;
+        
+        // Map years until graduation to year level
+        if (yearsUntilGrad === 0 || yearsUntilGrad === 1) {
+          setYear('Senior');
+        } else if (yearsUntilGrad === 2) {
+          setYear('Junior');
+        } else if (yearsUntilGrad === 3) {
+          setYear('Sophomore');
+        } else if (yearsUntilGrad === 4 || yearsUntilGrad === 5) {
+          setYear('Freshman');
+        } else if (yearsUntilGrad < 0 && yearsUntilGrad >= -1) {
+          // Recently graduated or graduating soon
+          setYear('Senior');
+        }
+        console.log('✅ Auto-filled year:', parsed.education.year);
+      }
+      
+      // Auto-fill coursework (ensure unique, properly formatted)
+      if (parsed.coursework.length > 0) {
+        const uniqueCoursework = Array.from(new Set(
+          parsed.coursework.map(c => c.trim()).filter(c => c.length > 0)
+        ));
+        setCoursework(uniqueCoursework);
+        console.log('✅ Auto-filled coursework:', uniqueCoursework.length, 'courses');
+      }
+      
+      // Auto-fill experience
+      if (parsed.experience.length > 0) {
+        setExperience(parsed.experience);
+        console.log('✅ Auto-filled experience:', parsed.experience.length, 'entries');
+      }
+      
+      // Auto-select target category if inferred
+      if (parsed.targetCategory) {
+        setTargetCategory(parsed.targetCategory);
+        console.log('✅ Auto-selected target category:', parsed.targetCategory);
+      }
+      
+      // Move to questionnaire step - fields are pre-filled but user can edit
+      setStep('details');
+    } catch (error) {
+      console.error('Error parsing resume:', error);
+      // Fallback to basic skill extraction
+      const dictionary = buildDictionary(seedRoles, seedResources);
+      const extractedSkills = extractSkillsFromText(text, dictionary);
+      const normalizedSkills = normalizeSkills(extractedSkills);
+      const uniqueSkills = Array.from(new Set(normalizedSkills.map(s => s.trim()).filter(s => s.length > 0)));
+      setSkills(uniqueSkills);
+      setResumeText(text);
+      console.log('⚠️ Fallback: Extracted', uniqueSkills.length, 'skills');
+      setStep('details');
+    }
   };
 
   const handleSave = async () => {
+    // Validate required fields
+    if (!targetCategory) {
+      alert('Please select a target industry');
+      return;
+    }
+
+    if (skills.length === 0) {
+      alert('Please add at least one skill');
+      return;
+    }
+
+    if (isStudent && (!year || !major)) {
+      alert('Please fill in all student information (year and major)');
+      return;
+    }
+
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setSaving(false);
+      return;
+    }
 
     const normalizedSkills = normalizeSkills(skills);
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        first_time: false,
-        is_student: isStudent,
-        year: isStudent ? year : null,
-        major: isStudent ? major : null,
-        skills: normalizedSkills,
-        coursework,
-        experience,
-        target_category: targetCategory,
-      })
-      .eq('uid', user.id);
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_time: false,
+          is_student: isStudent,
+          year: isStudent ? year : null,
+          major: isStudent ? major : null,
+          skills: normalizedSkills,
+          coursework,
+          experience,
+          target_category: targetCategory,
+          resume_text: resumeText || null,
+        }),
+      });
 
-    setSaving(false);
+      const result = await response.json();
 
-    if (!error) {
+      if (result.error) {
+        console.error('Error saving profile:', result.error);
+        alert('Failed to save profile. Please try again.');
+        setSaving(false);
+        return;
+      }
+
+      // Success - redirect to analyze page
       router.push('/analyze');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Failed to save profile. Please try again.');
+      setSaving(false);
     }
   };
 
@@ -135,9 +280,32 @@ export default function OnboardingPage() {
 
       {step === 'details' && (
         <div className="space-y-6">
+          {resumeText && (
+            <Card className="border-green-200 bg-green-50">
+              <CardContent className="pt-6">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-green-800">
+                    ✓ Resume uploaded successfully! Information has been extracted and auto-filled below.
+                  </p>
+                  <div className="text-xs text-green-700 space-y-1">
+                    {skills.length > 0 && <p>• {skills.length} skill{skills.length !== 1 ? 's' : ''} extracted</p>}
+                    {coursework.length > 0 && <p>• {coursework.length} course{coursework.length !== 1 ? 's' : ''} extracted</p>}
+                    {major && <p>• Major: {major}</p>}
+                    {year && <p>• Year: {year}</p>}
+                    {targetCategory && <p>• Target: {targetCategory}</p>}
+                  </div>
+                  <p className="text-xs text-green-600 mt-2">
+                    Please review and edit the information below, then complete the setup.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
           <Card>
             <CardHeader>
               <CardTitle>Basic Information</CardTitle>
+              <CardDescription>Please fill out all required fields</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">

@@ -21,32 +21,39 @@ export function AuthForm() {
     setLoading(true);
     setMessage(null);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          email,
-        },
-      },
-    });
-
-    setLoading(false);
-
-    if (error) {
-      setMessage({ type: 'error', text: error.message });
-    } else if (data.user) {
-      await supabase.from('profiles').insert({
-        uid: data.user.id,
-        first_time: true,
-        skills: [],
-        coursework: [],
-        experience: [],
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
-      setMessage({ type: 'success', text: 'Account created! Redirecting...' });
-      setTimeout(() => {
-        window.location.href = '/onboarding';
-      }, 1000);
+
+      const result = await response.json();
+
+      if (result.error) {
+        setMessage({ type: 'error', text: result.error });
+      } else if (result.user) {
+        // Save session directly - user already created server-side
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('skillgap_session', JSON.stringify(result.user));
+          document.cookie = `skillgap_session=${JSON.stringify(result.user)}; path=/; max-age=86400`;
+        }
+        
+        // Also create in IndexedDB for client-side queries
+        const { user: localUser, error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        
+        setMessage({ type: 'success', text: 'Account created! Redirecting...' });
+        setTimeout(() => {
+          window.location.href = '/onboarding';
+        }, 1000);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to create account' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,27 +62,43 @@ export function AuthForm() {
     setLoading(true);
     setMessage(null);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    setLoading(false);
+      const result = await response.json();
 
-    if (error) {
-      setMessage({ type: 'error', text: error.message });
-    } else if (data.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('first_time')
-        .eq('uid', data.user.id)
-        .maybeSingle();
+      if (result.error) {
+        setMessage({ type: 'error', text: result.error });
+      } else if (result.user) {
+        // Save session directly
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('skillgap_session', JSON.stringify(result.user));
+          document.cookie = `skillgap_session=${JSON.stringify(result.user)}; path=/; max-age=86400`;
+        }
+        
+        // Try to sync to IndexedDB for client-side queries (non-blocking)
+        try {
+          await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+        } catch (syncError) {
+          // IndexedDB sync failed, but session is set, so continue
+          console.log('IndexedDB sync failed, but session is set:', syncError);
+        }
 
-      if (profile?.first_time) {
+        // ALWAYS go to onboarding (data collection) after sign in
+        // Workflow: Sign In → Data Collection (Onboarding) → Analyzer
         window.location.href = '/onboarding';
-      } else {
-        window.location.href = '/analyze';
       }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to sign in' });
+    } finally {
+      setLoading(false);
     }
   };
 
