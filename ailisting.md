@@ -27,6 +27,10 @@ We are looking for Machine Learning Engineering interns to join our AI team at M
 * Personal projects or coursework using machine learning
 * Participation in coding competitions or hackathons
 * Basic knowledge of Linux/Unix environments
+* Soft skills
+* Communication skills
+* Agile workflow
+  
 
 ## Technical Skills
 
