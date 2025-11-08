@@ -1,13 +1,11 @@
 [build]
   base = "frontend/bdpafrontend-main"
-  command = "npm run build"
+  command = "npm install && npm run build"
   publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "18"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-[[redirects]]
-  from = "/*"
-  to = "/.netlify/functions/next"
-  status = 200
 
