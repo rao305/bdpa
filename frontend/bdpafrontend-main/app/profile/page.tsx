@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseClient } from '@/lib/supabase';
 import { normalizeSkills } from '@/lib/normalization';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +31,7 @@ export default function ProfilePage() {
   }, []);
 
   const loadProfile = async () => {
+    const supabase = createSupabaseClient();
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) {
       router.push('/auth');
@@ -59,6 +60,7 @@ export default function ProfilePage() {
 
   const handleSave = async () => {
     setSaving(true);
+    const supabase = createSupabaseClient();
 
     const normalizedSkills = normalizeSkills(skills);
 
@@ -84,6 +86,7 @@ export default function ProfilePage() {
   };
 
   const handleSignOut = async () => {
+    const supabase = createSupabaseClient();
     await supabase.auth.signOut();
     router.push('/');
   };

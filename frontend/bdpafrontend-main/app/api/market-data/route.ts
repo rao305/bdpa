@@ -1,65 +1,100 @@
 import { NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
 
-// Load market data from CSV files dynamically
+// Cached market data to avoid file I/O on every request
+let cachedMarketData: Record<string, number> | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Fallback market data (used immediately, no file I/O blocking)
+const FALLBACK_MARKET_DATA: Record<string, number> = {
+  'python': 22016,
+  'sql': 18322,
+  'java': 12482,
+  'javascript': 9661,
+  'excel': 12221,
+  'aws': 8853,
+  'git': 6420,
+  'docker': 5832,
+  'react': 6900,
+  'node.js': 5800,
+  'typescript': 4500,
+  'html': 11000,
+  'css': 10000,
+  'linux': 5000,
+  'mathematics': 4000,
+  'statistics': 3500,
+  'pandas': 3000,
+  'numpy': 2500,
+  'scikit-learn': 2000,
+  'c++': 5000,
+  'ros': 1500,
+  'embedded systems': 2000,
+  'unity': 3000,
+  'c#': 4000,
+  'machine learning': 6000,
+  'tableau': 3000,
+  'power bi': 2500,
+};
+
+// Load market data from CSV files dynamically (with caching)
 export async function GET() {
   try {
-    // Try to load from the analysis results CSV
-    // Try multiple possible paths
-    const possiblePaths = [
-      join(process.cwd(), '../../analysis/results/top_100_skills.csv'),
-      join(process.cwd(), '../../../analysis/results/top_100_skills.csv'),
-      join(process.cwd(), 'analysis/results/top_100_skills.csv'),
-    ];
-    
-    let csvPath = possiblePaths[0];
-    let csvContent = '';
-    
-    for (const path of possiblePaths) {
-      try {
-        csvContent = await readFile(path, 'utf-8');
-        csvPath = path;
-        break;
-      } catch (e) {
-        // Try next path
-        continue;
-      }
+    // Return cached data if available and fresh
+    const now = Date.now();
+    if (cachedMarketData && (now - cacheTimestamp) < CACHE_DURATION) {
+      return NextResponse.json({
+        marketData: cachedMarketData,
+        skillCombinations: generateSkillCombinations(cachedMarketData),
+        emergingTech: [],
+        totalSkills: Object.keys(cachedMarketData).length,
+      });
     }
     
-    let marketData: Record<string, number> = {};
-    let skillCombinations: Record<string, string[]> = {};
+    // Try to load from CSV in background (non-blocking)
+    let marketData: Record<string, number> = { ...FALLBACK_MARKET_DATA };
     
-    if (csvContent) {
-      const lines = csvContent.split('\n').slice(1); // Skip header
+    // Try to load CSV asynchronously (don't block response)
+    try {
+      const { readFile } = await import('fs/promises');
+      const { join } = await import('path');
       
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        const [skill, countStr] = line.split(',');
-        if (skill && countStr) {
-          const count = parseInt(countStr.trim(), 10);
-          if (!isNaN(count)) {
-            const normalizedSkill = skill.trim().toLowerCase();
-            marketData[normalizedSkill] = (marketData[normalizedSkill] || 0) + count;
+      const possiblePaths = [
+        join(process.cwd(), '../../analysis/results/top_100_skills.csv'),
+        join(process.cwd(), '../../../analysis/results/top_100_skills.csv'),
+        join(process.cwd(), 'analysis/results/top_100_skills.csv'),
+      ];
+      
+      for (const path of possiblePaths) {
+        try {
+          const csvContent = await readFile(path, 'utf-8');
+          const lines = csvContent.split('\n').slice(1); // Skip header
+          
+          // Process CSV quickly (limit to first 200 lines to avoid blocking)
+          for (const line of lines.slice(0, 200)) {
+            if (!line.trim()) continue;
+            const [skill, countStr] = line.split(',');
+            if (skill && countStr) {
+              const count = parseInt(countStr.trim(), 10);
+              if (!isNaN(count) && count > 0) {
+                const normalizedSkill = skill.trim().toLowerCase();
+                marketData[normalizedSkill] = (marketData[normalizedSkill] || 0) + count;
+              }
+            }
           }
+          break; // Successfully loaded, exit loop
+        } catch (e) {
+          // Try next path
+          continue;
         }
       }
-    } else {
-      console.warn('Could not load CSV from any path, using fallback data');
-      // Fallback to basic data if CSV not available
-      marketData = {
-        'python': 22016,
-        'sql': 18322,
-        'java': 12482,
-        'javascript': 9661,
-        'excel': 12221,
-        'aws': 8853,
-        'git': 6420,
-        'docker': 5832,
-        'react': 6900,
-        'node.js': 5800,
-      };
+    } catch (error) {
+      // If CSV loading fails, use fallback (already set above)
+      console.warn('Could not load CSV, using fallback data:', error);
     }
+    
+    // Cache the result
+    cachedMarketData = marketData;
+    cacheTimestamp = now;
     
     // Dynamically determine emerging tech based on growth patterns
     // (skills with lower absolute count but high growth potential)

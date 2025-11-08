@@ -7,7 +7,7 @@ import { Navigation } from '@/components/ui/navigation';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'GapFixer - Skills Gap Analysis',
+  title: 'SkillSharp - Skills Gap Analysis',
   description: 'Analyze your skills, discover gaps, and get a personalized learning roadmap',
 };
 

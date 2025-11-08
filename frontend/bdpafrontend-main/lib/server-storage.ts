@@ -1,179 +1,272 @@
-// Server-side storage for API routes
-// Uses JSON file for persistence (runs in Node.js environment)
+// Server-side storage using Supabase
+import { createSupabaseServerClient } from './supabase-server';
+import type { Database } from './supabase-types';
 
-import { promises as fs } from 'fs';
-import path from 'path';
-
-const DATA_DIR = path.join(process.cwd(), '.local-data');
-const DATA_FILE = path.join(DATA_DIR, 'data.json');
-
-interface StorageData {
-  users: any[];
-  profiles: any[];
-  roles: any[];
-  resources: any[];
-  analyses: any[];
-}
-
-let cache: StorageData | null = null;
-
-async function ensureDataFile(): Promise<void> {
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    try {
-      await fs.access(DATA_FILE);
-    } catch {
-      // File doesn't exist, create it
-      await fs.writeFile(DATA_FILE, JSON.stringify({
-        users: [],
-        profiles: [],
-        roles: [],
-        resources: [],
-        analyses: [],
-      }));
-    }
-  } catch (error) {
-    console.error('Error ensuring data file:', error);
-  }
-}
-
-async function loadData(): Promise<StorageData> {
-  if (cache) return cache;
-
-  await ensureDataFile();
-  
-  try {
-    const data = await fs.readFile(DATA_FILE, 'utf-8');
-    cache = JSON.parse(data);
-    return cache!;
-  } catch (error) {
-    console.error('Error loading data:', error);
-    cache = {
-      users: [],
-      profiles: [],
-      roles: [],
-      resources: [],
-      analyses: [],
-    };
-    return cache;
-  }
-}
-
-async function saveData(data: StorageData): Promise<void> {
-  await ensureDataFile();
-  await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
-  cache = data;
+// Use authenticated client for user operations
+async function getSupabaseClient() {
+  return await createSupabaseServerClient();
 }
 
 export const serverStorage = {
   async getUserByEmail(email: string) {
-    const data = await loadData();
-    return data.users.find(u => u.email === email) || null;
+    try {
+      const supabase = await getSupabaseClient();
+      // For regular users, we can only get current user, not list all users
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user || user.email !== email) {
+        return null;
+      }
+      return user;
+    } catch (error) {
+      console.error('Error in getUserByEmail:', error);
+      return null;
+    }
   },
 
   async getUserById(id: string) {
-    const data = await loadData();
-    return data.users.find(u => u.id === id) || null;
+    try {
+      const supabase = await getSupabaseClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user || user.id !== id) {
+        return null;
+      }
+      return user;
+    } catch (error) {
+      console.error('Error in getUserById:', error);
+      return null;
+    }
   },
 
-  async createUser(user: any) {
-    const data = await loadData();
-    data.users.push(user);
-    await saveData(data);
-    return user;
-  },
+  // Note: createUser removed as it requires admin privileges
+  // User creation is handled by the authentication flow
 
   async getProfile(uid: string) {
-    const data = await loadData();
-    return data.profiles.find(p => p.uid === uid) || null;
+    try {
+      const supabase = await getSupabaseClient();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('uid', uid)
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return null; // Not found
+        }
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+      return data;
+    } catch (error) {
+      console.error('Error in getProfile:', error);
+      throw error;
+    }
   },
 
   async saveProfile(profile: any) {
-    const data = await loadData();
-    const index = data.profiles.findIndex(p => p.uid === profile.uid);
-    if (index >= 0) {
-      data.profiles[index] = { ...data.profiles[index], ...profile };
-    } else {
-      data.profiles.push(profile);
+    try {
+      console.log('💾 Attempting to save profile:', { uid: profile.uid, skillCount: profile.skills?.length });
+      const supabase = await getSupabaseClient();
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(profile, { onConflict: 'uid' })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('❌ Profile save failed:', error);
+        throw new Error(`Failed to save profile: ${error.message}`);
+      }
+      
+      console.log('✅ Profile saved successfully:', { id: data.uid });
+      return data;
+    } catch (error) {
+      console.error('Error in saveProfile:', error);
+      throw error;
     }
-    await saveData(data);
-    return data.profiles.find(p => p.uid === profile.uid)!;
   },
 
   async getRole(roleId: string) {
-    const data = await loadData();
-    return data.roles.find(r => r.id === roleId) || null;
+    try {
+      const supabase = await getSupabaseClient();
+      const { data, error } = await supabase
+        .from('roles')
+        .select('*')
+        .eq('id', roleId)
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return null;
+        }
+        console.error('Error fetching role:', error);
+        return null;
+      }
+      return data;
+    } catch (error) {
+      console.error('Error in getRole:', error);
+      return null;
+    }
   },
 
   async getAllRoles() {
-    const data = await loadData();
-    return data.roles;
+    try {
+      const supabase = await getSupabaseClient();
+      const { data, error } = await supabase
+        .from('roles')
+        .select('*')
+        .order('category', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching roles:', error);
+        return [];
+      }
+      return data || [];
+    } catch (error) {
+      console.error('Error in getAllRoles:', error);
+      return [];
+    }
   },
 
   async saveRole(role: any) {
-    const data = await loadData();
-    const index = data.roles.findIndex(r => r.id === role.id);
-    if (index >= 0) {
-      data.roles[index] = role;
-    } else {
-      data.roles.push(role);
+    try {
+      const supabase = await getSupabaseClient();
+      const { data, error } = await supabase
+        .from('roles')
+        .upsert(role, { onConflict: 'id' })
+        .select()
+        .single();
+      
+      if (error) {
+        throw new Error(`Failed to save role: ${error.message}`);
+      }
+      return data;
+    } catch (error) {
+      console.error('Error in saveRole:', error);
+      throw error;
     }
-    await saveData(data);
-    return role;
   },
 
   async getResources(skill?: string) {
-    const data = await loadData();
-    if (skill) {
-      return data.resources.filter(r => r.skill === skill);
+    try {
+      const supabase = await getSupabaseClient();
+      let query = supabase
+        .from('resources')
+        .select('*');
+      
+      if (skill) {
+        query = query.eq('skill', skill);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching resources:', error);
+        return [];
+      }
+      return data || [];
+    } catch (error) {
+      console.error('Error in getResources:', error);
+      return [];
     }
-    return data.resources;
   },
 
   async saveResource(resource: any) {
-    const data = await loadData();
-    if (!resource.id) {
-      resource.id = `res_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    try {
+      const supabase = await getSupabaseClient();
+      const { data, error } = await supabase
+        .from('resources')
+        .insert(resource)
+        .select()
+        .single();
+      
+      if (error) {
+        throw new Error(`Failed to save resource: ${error.message}`);
+      }
+      return data;
+    } catch (error) {
+      console.error('Error in saveResource:', error);
+      throw error;
     }
-    data.resources.push(resource);
-    await saveData(data);
-    return resource;
   },
 
   async getAnalyses(uid: string) {
-    const data = await loadData();
-    return data.analyses
-      .filter(a => a.uid === uid)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    try {
+      const supabase = await getSupabaseClient();
+      const { data, error } = await supabase
+        .from('analyses')
+        .select('*')
+        .eq('uid', uid)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching analyses:', error);
+        return [];
+      }
+    return data || [];
+    } catch (error) {
+      console.error('Error in getAnalyses:', error);
+      return [];
+    }
   },
 
   async getAnalysis(analysisId: string) {
-    const data = await loadData();
-    return data.analyses.find(a => a.id === analysisId) || null;
+    try {
+      const supabase = await getSupabaseClient();
+      const { data, error } = await supabase
+        .from('analyses')
+        .select('*')
+        .eq('id', analysisId)
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return null;
+        }
+        console.error('Error fetching analysis:', error);
+        return null;
+      }
+      return data;
+    } catch (error) {
+      console.error('Error in getAnalysis:', error);
+      return null;
+    }
   },
 
   async saveAnalysis(analysis: any) {
-    const data = await loadData();
-    if (!analysis.id) {
-      analysis.id = `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    try {
+      const supabase = await getSupabaseClient();
+      const { data, error } = await supabase
+        .from('analyses')
+        .insert(analysis)
+        .select()
+        .single();
+      
+      if (error) {
+        throw new Error(`Failed to save analysis: ${error.message}`);
+      }
+      return data;
+    } catch (error) {
+      console.error('Error in saveAnalysis:', error);
+      throw error;
     }
-    if (!analysis.created_at) {
-      analysis.created_at = new Date().toISOString();
-    }
-    analysis.updated_at = new Date().toISOString();
-    data.analyses.push(analysis);
-    await saveData(data);
-    return analysis;
   },
 
   async delete(table: string, key: string, keyValue: any): Promise<void> {
-    const data = await loadData();
-    const tableData = data[table as keyof StorageData] as any[];
-    const index = tableData.findIndex((item: any) => item[key] === keyValue);
-    if (index >= 0) {
-      tableData.splice(index, 1);
-      await saveData(data);
+    try {
+      const supabase = await getSupabaseClient();
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .eq(key, keyValue);
+      
+      if (error) {
+        throw new Error(`Failed to delete from ${table}: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Error in delete:', error);
+      throw error;
     }
   },
 };
-

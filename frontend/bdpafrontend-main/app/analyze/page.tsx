@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseClient } from '@/lib/supabase';
 import { seedRoles } from '@/lib/seed-data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,14 +30,31 @@ export default function AnalyzePage() {
 
   const loadProfile = async () => {
     try {
+      const supabase = createSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      
       if (!user) {
         router.push('/auth');
         return;
       }
 
-      // Use API endpoint instead of direct Supabase query
-      const response = await fetch('/api/profile');
+      // Use API endpoint with proper authentication
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add authorization header if we have a session
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch('/api/profile', {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      });
+      
       if (!response.ok) {
         if (response.status === 401) {
           router.push('/auth');
@@ -76,11 +93,21 @@ export default function AnalyzePage() {
     setError(null);
 
     try {
+      const supabase = createSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch('/api/analyze', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({
           role_id: roleId,
           jd_title: jdTitle,

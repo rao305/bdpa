@@ -2,15 +2,6 @@ import { NextResponse } from 'next/server';
 import { seedRoles, seedResources } from '@/lib/seed-data';
 import { serverStorage } from '@/lib/server-storage';
 
-// Simple hash function (for demo purposes)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 // POST /api/seed - Seed database with initial data
 export async function POST() {
   try {
@@ -23,15 +14,11 @@ export async function POST() {
     const existingDemoUser = await serverStorage.getUserByEmail(demoEmail);
     
     if (!existingDemoUser) {
-      const hashedPassword = await hashPassword(demoPassword);
-      const demoUser = {
-        id: 'demo_user_001',
+      // Create user using Supabase Auth (password will be hashed by Supabase)
+      const demoUser = await serverStorage.createUser({
         email: demoEmail,
-        password: hashedPassword,
-        created_at: new Date().toISOString(),
-      };
-      
-      await serverStorage.createUser(demoUser);
+        password: demoPassword,
+      });
       
       // Create demo profile with minimal data (user will fill it out)
       await serverStorage.saveProfile({
@@ -45,8 +32,6 @@ export async function POST() {
         experience: [],
         target_category: null,
         resume_text: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       });
       
       console.log('Demo user created:', demoEmail);
@@ -55,7 +40,7 @@ export async function POST() {
       const existingProfile = await serverStorage.getProfile(existingDemoUser.id);
       if (existingProfile) {
         await serverStorage.saveProfile({
-          ...existingProfile,
+          ...(existingProfile as any),
           first_time: true,
           is_student: false,
           year: null,
@@ -81,8 +66,6 @@ export async function POST() {
           experience: [],
           target_category: null,
           resume_text: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
         });
         console.log('Demo user profile created');
       }
@@ -94,10 +77,7 @@ export async function POST() {
 
     if (existingRoles.length === 0) {
       for (const role of seedRoles) {
-        await serverStorage.saveRole({
-          ...role,
-          created_at: new Date().toISOString(),
-        });
+        await serverStorage.saveRole(role);
       }
       console.log(`Seeded ${seedRoles.length} roles`);
     } else {
@@ -110,10 +90,7 @@ export async function POST() {
 
     if (existingResources.length === 0) {
       for (const resource of seedResources) {
-        await serverStorage.saveResource({
-          ...resource,
-          created_at: new Date().toISOString(),
-        });
+        await serverStorage.saveResource(resource);
       }
       console.log(`Seeded ${seedResources.length} resources`);
     } else {

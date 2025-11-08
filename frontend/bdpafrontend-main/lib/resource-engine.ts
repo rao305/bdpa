@@ -385,6 +385,192 @@ const RESOURCE_DATABASE: Record<string, LearningResource[]> = {
       description: 'Statistics concepts explained clearly and simply.',
       prerequisites: []
     }
+  ],
+  
+  'mathematics': [
+    {
+      title: 'Khan Academy Math',
+      url: 'https://www.khanacademy.org/math',
+      type: 'course',
+      difficulty: 'beginner',
+      duration: 'Ongoing',
+      cost: 'free',
+      platform: 'Khan Academy',
+      rating: 4.8,
+      description: 'Comprehensive mathematics courses from algebra to calculus.',
+      prerequisites: []
+    },
+    {
+      title: '3Blue1Brown - Essence of Calculus',
+      url: 'https://www.3blue1brown.com/topics/calculus',
+      type: 'video',
+      difficulty: 'intermediate',
+      duration: '10 hours',
+      cost: 'free',
+      platform: 'YouTube',
+      rating: 4.9,
+      description: 'Visual and intuitive explanations of calculus concepts.',
+      prerequisites: ['Basic algebra']
+    },
+    {
+      title: 'MIT OpenCourseWare - Mathematics',
+      url: 'https://ocw.mit.edu/courses/mathematics/',
+      type: 'course',
+      difficulty: 'advanced',
+      duration: '12-16 weeks',
+      cost: 'free',
+      platform: 'MIT',
+      rating: 4.8,
+      description: 'University-level mathematics courses from MIT.',
+      prerequisites: ['High school math']
+    }
+  ],
+  
+  'ros': [
+    {
+      title: 'ROS Tutorials (Official)',
+      url: 'http://wiki.ros.org/ROS/Tutorials',
+      type: 'tutorial',
+      difficulty: 'beginner',
+      duration: '4-6 weeks',
+      cost: 'free',
+      platform: 'ROS Wiki',
+      rating: 4.7,
+      description: 'Official ROS tutorials covering basics to advanced topics.',
+      prerequisites: ['Linux basics', 'C++ or Python']
+    },
+    {
+      title: 'ROS for Beginners',
+      url: 'https://www.theconstructsim.com/ros-basics/',
+      type: 'course',
+      difficulty: 'beginner',
+      duration: '6-8 weeks',
+      cost: 'freemium',
+      platform: 'The Construct',
+      rating: 4.6,
+      description: 'Hands-on ROS course with practical robotics projects.',
+      prerequisites: ['Python basics']
+    }
+  ],
+  
+  'ros basics': [
+    {
+      title: 'ROS Tutorials (Official)',
+      url: 'http://wiki.ros.org/ROS/Tutorials',
+      type: 'tutorial',
+      difficulty: 'beginner',
+      duration: '4-6 weeks',
+      cost: 'free',
+      platform: 'ROS Wiki',
+      rating: 4.7,
+      description: 'Official ROS tutorials covering basics to advanced topics.',
+      prerequisites: ['Linux basics', 'C++ or Python']
+    },
+    {
+      title: 'ROS for Beginners',
+      url: 'https://www.theconstructsim.com/ros-basics/',
+      type: 'course',
+      difficulty: 'beginner',
+      duration: '6-8 weeks',
+      cost: 'freemium',
+      platform: 'The Construct',
+      rating: 4.6,
+      description: 'Hands-on ROS course with practical robotics projects.',
+      prerequisites: ['Python basics']
+    }
+  ],
+  
+  'embedded systems': [
+    {
+      title: 'Embedded Systems Fundamentals',
+      url: 'https://www.coursera.org/learn/introduction-embedded-systems',
+      type: 'course',
+      difficulty: 'beginner',
+      duration: '4 weeks',
+      cost: 'freemium',
+      platform: 'Coursera',
+      rating: 4.5,
+      description: 'Introduction to embedded systems and microcontrollers.',
+      prerequisites: ['C programming basics']
+    },
+    {
+      title: 'Arduino Getting Started',
+      url: 'https://www.arduino.cc/en/Guide',
+      type: 'tutorial',
+      difficulty: 'beginner',
+      duration: '2-3 weeks',
+      cost: 'free',
+      platform: 'Arduino',
+      rating: 4.7,
+      description: 'Learn embedded systems with Arduino platform.',
+      prerequisites: []
+    }
+  ],
+  
+  'sensors': [
+    {
+      title: 'Sensor Basics Tutorial',
+      url: 'https://learn.sparkfun.com/tutorials/what-is-a-sensor',
+      type: 'tutorial',
+      difficulty: 'beginner',
+      duration: '1-2 weeks',
+      cost: 'free',
+      platform: 'SparkFun',
+      rating: 4.6,
+      description: 'Introduction to different types of sensors and their applications.',
+      prerequisites: []
+    },
+    {
+      title: 'Sensor Fusion and Calibration',
+      url: 'https://www.coursera.org/learn/sensor-fusion',
+      type: 'course',
+      difficulty: 'intermediate',
+      duration: '4 weeks',
+      cost: 'freemium',
+      platform: 'Coursera',
+      rating: 4.5,
+      description: 'Learn to combine data from multiple sensors for robotics applications.',
+      prerequisites: ['Basic programming', 'Mathematics']
+    }
+  ],
+  
+  'c++ basics': [
+    {
+      title: 'LearnCpp.com',
+      url: 'https://www.learncpp.com/',
+      type: 'tutorial',
+      difficulty: 'beginner',
+      duration: '12-16 weeks',
+      cost: 'free',
+      platform: 'LearnCpp',
+      rating: 4.8,
+      description: 'Comprehensive C++ tutorial from basics to advanced topics.',
+      prerequisites: ['Basic programming concepts']
+    },
+    {
+      title: 'C++ Tutorial (Programiz)',
+      url: 'https://www.programiz.com/cpp-programming',
+      type: 'tutorial',
+      difficulty: 'beginner',
+      duration: '8-10 weeks',
+      cost: 'free',
+      platform: 'Programiz',
+      rating: 4.5,
+      description: 'Learn C++ with examples and exercises.',
+      prerequisites: []
+    },
+    {
+      title: 'C++ Crash Course',
+      url: 'https://www.learncpp.com/',
+      type: 'tutorial',
+      difficulty: 'beginner',
+      duration: '4-6 weeks',
+      cost: 'free',
+      platform: 'LearnCpp',
+      rating: 4.7,
+      description: 'Quick introduction to C++ fundamentals.',
+      prerequisites: []
+    }
   ]
 };
 
@@ -394,7 +580,30 @@ export function getResourcesForSkill(
   preferredTypes?: string[],
   maxResults: number = 3
 ): LearningResource[] {
-  const skillResources = RESOURCE_DATABASE[skill.toLowerCase()] || [];
+  const normalizedSkill = skill.toLowerCase().trim();
+  
+  // Try exact match first
+  let skillResources = RESOURCE_DATABASE[normalizedSkill] || [];
+  
+  // If no exact match, try to find by partial matching
+  if (skillResources.length === 0) {
+    // Try matching base skill (e.g., "c++ basics" -> "c++")
+    const skillWords = normalizedSkill.split(/\s+/);
+    const baseSkill = skillWords[0]; // Get first word
+    
+    // Check if base skill exists (e.g., "c++" for "c++ basics")
+    if (RESOURCE_DATABASE[baseSkill]) {
+      skillResources = RESOURCE_DATABASE[baseSkill];
+    } else {
+      // Try reverse lookup - check if any database key is contained in the skill
+      for (const dbSkill in RESOURCE_DATABASE) {
+        if (normalizedSkill.includes(dbSkill) || dbSkill.includes(normalizedSkill)) {
+          skillResources = RESOURCE_DATABASE[dbSkill];
+          break;
+        }
+      }
+    }
+  }
   
   // Filter by difficulty - include current level and below
   const appropriateResources = skillResources.filter(resource => {

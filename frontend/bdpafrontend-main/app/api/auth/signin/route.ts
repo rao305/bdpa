@@ -1,19 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverStorage } from '@/lib/server-storage';
-
-// Simple hash function (for demo purposes)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  const passwordHash = await hashPassword(password);
-  return passwordHash === hash;
-}
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,18 +10,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
 
-    const user = await serverStorage.getUserByEmail(email);
-    if (!user) {
+    const supabase = await createSupabaseServerClient();
+    
+    // Sign in using Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+
+    if (!data.user) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    const isValid = await verifyPassword(password, user.password);
-    if (!isValid) {
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
-    }
-
-    // Return user without password
-    const { password: _, ...userWithoutPassword } = user;
+    // Return user without sensitive data
+    const { password: _, ...userWithoutPassword } = {
+      id: data.user.id,
+      email: data.user.email || '',
+    };
 
     return NextResponse.json({ 
       user: userWithoutPassword,
@@ -47,4 +42,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

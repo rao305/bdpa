@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { normalizeSkills, extractSkillsFromText, buildDictionary } from '@/lib/normalization';
+import { createSupabaseClient } from '@/lib/supabase';
+import { normalizeSkills, extractSkillsFromText, buildDictionary, formatSkillForDisplay } from '@/lib/normalization';
 import { seedRoles, seedResources } from '@/lib/seed-data';
 import { parseResumeText } from '@/lib/resume-parser';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,7 @@ export default function OnboardingPage() {
 
   const checkAuth = async () => {
     try {
+      const supabase = createSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/auth');
@@ -76,27 +77,8 @@ export default function OnboardingPage() {
       // Normalize and auto-fill skills (ensure unique, properly formatted)
       // First normalize for matching, then format for display
       const normalizedSkills = normalizeSkills(parsed.skills);
-      // Format skills for better display (capitalize properly)
-      const formattedSkills = normalizedSkills.map(skill => {
-        // Handle special cases (e.g., "JavaScript", "C++", "Node.js")
-        if (skill.includes('javascript')) return 'JavaScript';
-        if (skill.includes('typescript')) return 'TypeScript';
-        if (skill.includes('python')) return 'Python';
-        if (skill.includes('java') && !skill.includes('javascript')) return 'Java';
-        if (skill.includes('c++')) return 'C++';
-        if (skill.includes('node.js') || skill.includes('nodejs')) return 'Node.js';
-        if (skill.includes('react')) return 'React';
-        if (skill.includes('tensorflow')) return 'TensorFlow';
-        if (skill.includes('pytorch')) return 'PyTorch';
-        if (skill.includes('machine learning')) return 'Machine Learning';
-        if (skill.includes('deep learning')) return 'Deep Learning';
-        if (skill.includes('data science')) return 'Data Science';
-        if (skill.includes('artificial intelligence')) return 'Artificial Intelligence';
-        // Capitalize first letter of each word
-        return skill.split(' ').map(word => 
-          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-        ).join(' ');
-      });
+      // Format skills dynamically using the formatSkillForDisplay function
+      const formattedSkills = normalizedSkills.map(skill => formatSkillForDisplay(skill));
       const uniqueSkills = Array.from(new Set(formattedSkills.filter(s => s.length > 0)));
       setSkills(uniqueSkills);
       setResumeText(text);
@@ -185,18 +167,58 @@ export default function OnboardingPage() {
     }
 
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setSaving(false);
-      return;
-    }
-
-    const normalizedSkills = normalizeSkills(skills);
-
+    
+    // Verify user authentication before making API call
     try {
+      const supabase = createSupabaseClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error('Authentication error:', authError);
+        alert('Authentication error. Please sign in again.');
+        router.push('/auth');
+        return;
+      }
+      
+      if (!user) {
+        console.error('No authenticated user found');
+        alert('Please sign in to save your profile');
+        router.push('/auth');
+        return;
+      }
+
+      console.log('✅ User verified before profile save:', { id: user.id, email: user.email });
+
+      // Get current session to ensure it's fresh
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        console.error('Session error:', sessionError);
+        alert('Session expired. Please sign in again.');
+        router.push('/auth');
+        return;
+      }
+
+      console.log('✅ Session verified:', { 
+        accessToken: !!session.access_token, 
+        expiresAt: session.expires_at 
+      });
+
+      const normalizedSkills = normalizeSkills(skills);
+
+      console.log('📤 Saving profile with data:', {
+        userId: user.id,
+        skillCount: normalizedSkills.length,
+        isStudent,
+        targetCategory,
+        hasResume: !!resumeText
+      });
       const response = await fetch('/api/profile', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        credentials: 'include', // Ensure cookies are sent
         body: JSON.stringify({
           first_time: false,
           is_student: isStudent,
@@ -210,11 +232,22 @@ export default function OnboardingPage() {
         }),
       });
 
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response from profile save:', text.substring(0, 500));
+        alert(`Failed to save profile: Server error (${response.status}). Please check console for details.`);
+        setSaving(false);
+        return;
+      }
+
       const result = await response.json();
 
-      if (result.error) {
-        console.error('Error saving profile:', result.error);
-        alert('Failed to save profile. Please try again.');
+      if (!response.ok || result.error) {
+        console.error('Error saving profile:', result.error || result.message || 'Unknown error');
+        console.error('Full response:', result);
+        alert(`Failed to save profile: ${result.error || result.message || 'Unknown error'}. Please check console for details.`);
         setSaving(false);
         return;
       }
@@ -222,11 +255,11 @@ export default function OnboardingPage() {
       // Success - redirect to analyze page
       router.push('/analyze');
     } catch (error) {
-      console.error('Error saving profile:', error);
-      alert('Failed to save profile. Please try again.');
+      console.error('Authentication or profile save error:', error);
+      alert('An error occurred. Please try again.');
       setSaving(false);
     }
-  };
+};
 
   if (loading) {
     return (
@@ -239,7 +272,7 @@ export default function OnboardingPage() {
   return (
     <div className="container max-w-3xl mx-auto py-12 px-4">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Welcome to GapFixer</h1>
+        <h1 className="text-3xl font-bold mb-2">Welcome to SkillSharp</h1>
         <p className="text-muted-foreground">Let's build your skill profile</p>
       </div>
 

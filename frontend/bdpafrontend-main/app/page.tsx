@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, hasSupabaseCredentials } from '@/lib/supabase';
+import { createSupabaseClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Target, TrendingUp, BookOpen, BarChart3 } from 'lucide-react';
@@ -17,12 +17,28 @@ export default function Home() {
 
   const checkAuth = async () => {
     try {
+      const supabase = createSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
 
       if (user) {
-        // Check profile via API
+        // Check profile via API with proper authentication
         try {
-          const response = await fetch('/api/profile');
+          const headers: HeadersInit = {
+            'Content-Type': 'application/json',
+          };
+
+          // Add authorization header if we have a session
+          if (session?.access_token) {
+            headers['Authorization'] = `Bearer ${session.access_token}`;
+          }
+
+          const response = await fetch('/api/profile', {
+            method: 'GET',
+            headers,
+            credentials: 'include',
+          });
+
           if (response.ok) {
             const data = await response.json();
             const profile = data.profile;
@@ -36,6 +52,10 @@ export default function Home() {
               router.push('/analyze');
               return;
             }
+          } else if (response.status === 401) {
+            // Authentication failed - redirect to auth
+            router.push('/auth');
+            return;
           }
         } catch (error) {
           console.log('Profile check failed:', error);
@@ -66,7 +86,7 @@ export default function Home() {
             <span className="text-sm font-medium text-primary">Skills Gap Analysis Platform</span>
           </div>
           <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
-            See Your Gap.<br />Fix Your Gap.
+            Sharpen Your Skills.<br />Advance Your Career.
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Analyze your resume against job descriptions, discover missing skills, and get a personalized learning roadmap to land your dream role.

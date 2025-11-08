@@ -505,10 +505,16 @@ export class RealMarketAnalysisEngine {
     missingSkills: Array<{ skill: string; weight: number; priority: string }>,
     userSkills: Set<string>,
     roleCategory: string,
-    prioritizedGaps: Array<{ skill: string; weight: number; priority: string; marketPriority: number; marketDemand: number }>
+    prioritizedGaps: Array<{ skill: string; weight: number; priority: string; marketPriority: number; marketDemand: number }>,
+    jdText?: string,
+    jdTitle?: string
   ) {
     const userSkillsList = Array.from(userSkills).map(s => s.toLowerCase());
     const explanations: Array<{ skill: string; reason: string; marketDemand: number; priority: string }> = [];
+    
+    // Extract specific tasks and requirements from job description
+    const jdTasks = this.extractTasksFromJD(jdText || '');
+    const jdKeywords = this.extractRelevantKeywords(jdText || '', roleCategory);
     
     // Generate explanations for top missing skills
     const topMissing = prioritizedGaps.slice(0, 5);
@@ -520,66 +526,142 @@ export class RealMarketAnalysisEngine {
       
       let reason = '';
       
+      // Find specific tasks in JD that require this skill
+      const relevantTasks = this.findRelevantTasksForSkill(skill, jdTasks, jdText || '');
+      const specificUseCase = this.getSpecificUseCase(skill, jdText || '', roleCategory);
+      
       // Generate specific explanations based on skill and context
       if (skill === 'statistics') {
         if (userSkillsList.includes('python') || userSkillsList.includes('excel')) {
-          reason = `Statistics is essential for ${demand.toLocaleString()}+ ML/data roles. Your existing ${userSkillsList.find(s => ['python', 'excel'].includes(s))} foundation makes learning statistical concepts more practical. You'll need statistics for hypothesis testing, probability distributions, and validating model performance.`;
+          const pythonOrExcel = userSkillsList.find(s => ['python', 'excel'].includes(s));
+          const useCasePart = specificUseCase ? `Specifically for this role, you'll need statistics to ${specificUseCase}.` : "You'll need statistics for hypothesis testing, probability distributions, and validating model performance.";
+          const tasksPart = relevantTasks ? `For example, this job requires you to ${relevantTasks}.` : '';
+          reason = `Statistics is essential for ${demand.toLocaleString()}+ ML/data roles. Your existing ${pythonOrExcel} foundation makes learning statistical concepts more practical. ${useCasePart} ${tasksPart}`;
         } else {
-          reason = `Statistics is required for ${demand.toLocaleString()}+ data science positions. It's fundamental for understanding data patterns, making predictions, and validating analysis results. Without statistics, you can't properly interpret data or build reliable models.`;
+          const useCasePart = specificUseCase ? `In this role, you'll use statistics to ${specificUseCase}.` : "It's fundamental for understanding data patterns, making predictions, and validating analysis results.";
+          const tasksPart = relevantTasks ? `Specifically, you'll need it to ${relevantTasks}.` : "Without statistics, you can't properly interpret data or build reliable models.";
+          reason = `Statistics is required for ${demand.toLocaleString()}+ data science positions. ${useCasePart} ${tasksPart}`;
         }
       } else if (skill === 'pandas') {
         if (userSkillsList.includes('python')) {
-          reason = `Pandas is the industry standard for data manipulation in Python, required by ${demand.toLocaleString()}+ roles. Since you already know Python, pandas is your natural next step for data cleaning, transformation, and analysis. It's essential for preparing datasets before machine learning.`;
+          const useCasePart = specificUseCase ? `In this role, you'll use pandas to ${specificUseCase}.` : 'It handles data cleaning, transformation, and analysis - essential for preparing datasets before machine learning.';
+          const tasksPart = relevantTasks ? `For instance, this job description mentions tasks like ${relevantTasks}, which pandas handles efficiently.` : '';
+          reason = `Pandas is the industry standard for data manipulation in Python, required by ${demand.toLocaleString()}+ roles. Since you already know Python, pandas is your natural next step. ${useCasePart} ${tasksPart}`;
         } else {
-          reason = `Pandas is Python's primary data manipulation library, needed for ${demand.toLocaleString()}+ data roles. It handles data cleaning, filtering, grouping, and reshaping - tasks that are 80% of any data science project. Learning pandas without Python first would be very difficult.`;
+          const useCasePart = specificUseCase ? `This role specifically requires pandas for ${specificUseCase}.` : "It handles data cleaning, filtering, grouping, and reshaping - tasks that are 80% of any data science project.";
+          reason = `Pandas is Python's primary data manipulation library, needed for ${demand.toLocaleString()}+ data roles. ${useCasePart} Learning pandas without Python first would be very difficult.`;
         }
       } else if (skill === 'numpy') {
         if (userSkillsList.includes('python') || userSkillsList.includes('pandas')) {
-          reason = `NumPy provides the mathematical foundation for all Python data work, powering ${demand.toLocaleString()}+ scientific computing roles. Your ${userSkillsList.includes('pandas') ? 'pandas' : 'Python'} knowledge makes this a logical next step. NumPy handles arrays, linear algebra, and numerical operations that ML libraries depend on.`;
+          const existingSkill = userSkillsList.includes('pandas') ? 'pandas' : 'Python';
+          const useCasePart = specificUseCase ? `In this position, NumPy will be used for ${specificUseCase}.` : 'NumPy handles arrays, linear algebra, and numerical operations that ML libraries depend on.';
+          const tasksPart = relevantTasks ? `The job requires ${relevantTasks}, which NumPy excels at.` : '';
+          reason = `NumPy provides the mathematical foundation for all Python data work, powering ${demand.toLocaleString()}+ scientific computing roles. Your ${existingSkill} knowledge makes this a logical next step. ${useCasePart} ${tasksPart}`;
         } else {
-          reason = `NumPy is the mathematical backbone of Python data science, essential for ${demand.toLocaleString()}+ technical roles. It provides efficient array operations and mathematical functions. Most ML libraries (scikit-learn, TensorFlow) are built on NumPy, making it unavoidable for serious data work.`;
+          const useCasePart = specificUseCase ? `This role needs NumPy for ${specificUseCase}.` : 'It provides efficient array operations and mathematical functions.';
+          reason = `NumPy is the mathematical backbone of Python data science, essential for ${demand.toLocaleString()}+ technical roles. ${useCasePart} Most ML libraries (scikit-learn, TensorFlow) are built on NumPy, making it unavoidable for serious data work.`;
         }
       } else if (skill === 'sql') {
         if (userSkillsList.includes('excel')) {
-          reason = `SQL expands your data analysis from spreadsheets to enterprise databases, opening ${demand.toLocaleString()}+ opportunities. Your Excel skills with formulas and data manipulation translate well to SQL queries. Most real-world data lives in databases, not files.`;
+          const useCasePart = specificUseCase ? `In this role, you'll use SQL to ${specificUseCase}.` : 'Most real-world data lives in databases, not files.';
+          const tasksPart = relevantTasks ? `The job description mentions ${relevantTasks}, which requires SQL queries.` : '';
+          reason = `SQL expands your data analysis from spreadsheets to enterprise databases, opening ${demand.toLocaleString()}+ opportunities. Your Excel skills with formulas and data manipulation translate well to SQL queries. ${useCasePart} ${tasksPart}`;
         } else if (userSkillsList.includes('python')) {
-          reason = `SQL complements your Python programming by handling data extraction from databases, needed for ${demand.toLocaleString()}+ roles. While Python processes data, SQL gets the data from where it's stored. This combination is powerful for end-to-end data workflows.`;
+          const useCasePart = specificUseCase ? `This position requires SQL to ${specificUseCase}, while Python processes the results.` : "While Python processes data, SQL gets the data from where it's stored.";
+          const tasksPart = relevantTasks ? `For example, you'll need SQL to ${relevantTasks}.` : '';
+          reason = `SQL complements your Python programming by handling data extraction from databases, needed for ${demand.toLocaleString()}+ roles. ${useCasePart} This combination is powerful for end-to-end data workflows. ${tasksPart}`;
         } else {
-          reason = `SQL is the universal language for working with databases, required by ${demand.toLocaleString()}+ positions across all tech roles. Every company stores data in databases, and SQL is how you access, filter, join, and analyze that data. It's foundational regardless of your programming language.`;
+          const useCasePart = specificUseCase ? `In this role, SQL is needed to ${specificUseCase}.` : 'Every company stores data in databases, and SQL is how you access, filter, join, and analyze that data.';
+          const tasksPart = relevantTasks ? `The job specifically requires ${relevantTasks}, which SQL handles.` : '';
+          reason = `SQL is the universal language for working with databases, required by ${demand.toLocaleString()}+ positions across all tech roles. ${useCasePart} ${tasksPart}`;
         }
       } else if (skill === 'machine learning basics' || skill === 'machine learning') {
         if (userSkillsList.includes('python') && userSkillsList.includes('statistics')) {
-          reason = `With your Python and statistics foundation, machine learning is your natural career progression into ${demand.toLocaleString()}+ AI roles. ML combines programming and statistics to build predictive models. Your existing skills make learning algorithms and model training much easier.`;
+          const useCasePart = specificUseCase ? `This role specifically requires ML to ${specificUseCase}.` : 'ML combines programming and statistics to build predictive models.';
+          const tasksPart = relevantTasks ? `You'll be expected to ${relevantTasks}, which requires ML knowledge.` : '';
+          reason = `With your Python and statistics foundation, machine learning is your natural career progression into ${demand.toLocaleString()}+ AI roles. ${useCasePart} Your existing skills make learning algorithms and model training much easier. ${tasksPart}`;
         } else if (userSkillsList.includes('python')) {
-          reason = `Machine learning leverages your Python skills for building predictive models, opening ${demand.toLocaleString()}+ AI opportunities. However, you'll also need statistics knowledge to understand how algorithms work and validate model performance.`;
+          const useCasePart = specificUseCase ? `In this position, you'll use ML to ${specificUseCase}.` : "However, you'll also need statistics knowledge to understand how algorithms work and validate model performance.";
+          const tasksPart = relevantTasks ? `The job requires ${relevantTasks}, which ML enables.` : '';
+          reason = `Machine learning leverages your Python skills for building predictive models, opening ${demand.toLocaleString()}+ AI opportunities. ${useCasePart} ${tasksPart}`;
         } else {
-          reason = `Machine learning is driving ${demand.toLocaleString()}+ job opportunities in AI. It requires both programming (usually Python) and statistics to build models that learn from data. This field is growing rapidly but requires strong technical foundations.`;
+          const useCasePart = specificUseCase ? `This role needs ML for ${specificUseCase}.` : 'It requires both programming (usually Python) and statistics to build models that learn from data.';
+          const tasksPart = relevantTasks ? `Specifically, you'll need ML to ${relevantTasks}.` : 'This field is growing rapidly but requires strong technical foundations.';
+          reason = `Machine learning is driving ${demand.toLocaleString()}+ job opportunities in AI. ${useCasePart} ${tasksPart}`;
         }
       } else if (skill === 'javascript') {
         if (userSkillsList.includes('html') || userSkillsList.includes('css')) {
-          reason = `JavaScript completes your web development foundation, enabling ${demand.toLocaleString()}+ frontend roles. Your HTML/CSS skills handle structure and styling; JavaScript adds interactivity and dynamic behavior. Modern web development is impossible without all three.`;
+          const useCasePart = specificUseCase ? `In this role, JavaScript will be used to ${specificUseCase}.` : 'Modern web development is impossible without all three.';
+          const tasksPart = relevantTasks ? `The job requires ${relevantTasks}, which JavaScript handles.` : '';
+          reason = `JavaScript completes your web development foundation, enabling ${demand.toLocaleString()}+ frontend roles. Your HTML/CSS skills handle structure and styling; JavaScript adds interactivity. ${useCasePart} ${tasksPart}`;
         } else {
-          reason = `JavaScript powers ${demand.toLocaleString()}+ web development positions and is essential for interactive websites. It runs in browsers and servers (Node.js), making it versatile for full-stack development. It's one of the most in-demand programming languages.`;
+          const useCasePart = specificUseCase ? `This position needs JavaScript for ${specificUseCase}.` : "It runs in browsers and servers (Node.js), making it versatile for full-stack development.";
+          const tasksPart = relevantTasks ? `You'll use it to ${relevantTasks}.` : '';
+          reason = `JavaScript powers ${demand.toLocaleString()}+ web development positions and is essential for interactive websites. ${useCasePart} ${tasksPart}`;
         }
       } else if (skill === 'react' || skill === 'react.js') {
         if (userSkillsList.includes('javascript')) {
-          reason = `React builds on your JavaScript knowledge to create modern user interfaces, needed for ${demand.toLocaleString()}+ frontend roles. It's the most popular UI framework, used by Facebook, Netflix, and countless companies. Your JavaScript foundation makes React a natural progression.`;
+          const useCasePart = specificUseCase ? `This role requires React to ${specificUseCase}.` : "It's the most popular UI framework, used by Facebook, Netflix, and countless companies.";
+          const tasksPart = relevantTasks ? `For example, you'll use React to ${relevantTasks}.` : '';
+          reason = `React builds on your JavaScript knowledge to create modern user interfaces, needed for ${demand.toLocaleString()}+ frontend roles. ${useCasePart} Your JavaScript foundation makes React a natural progression. ${tasksPart}`;
         } else {
-          reason = `React is the leading framework for building user interfaces, powering ${demand.toLocaleString()}+ frontend positions. However, React requires solid JavaScript fundamentals first. Learning React without JavaScript would be like learning calculus without algebra.`;
+          const useCasePart = specificUseCase ? `This position needs React for ${specificUseCase}.` : 'However, React requires solid JavaScript fundamentals first.';
+          reason = `React is the leading framework for building user interfaces, powering ${demand.toLocaleString()}+ frontend positions. ${useCasePart} Learning React without JavaScript would be like learning calculus without algebra.`;
+        }
+      } else if (skill === 'jupyter notebooks' || skill === 'jupyter') {
+        if (userSkillsList.includes('python')) {
+          const useCasePart = specificUseCase ? `In this role, you'll use Jupyter to ${specificUseCase}.` : "Since you know Python, Jupyter is the natural tool for interactive data exploration, model development, and sharing your analysis.";
+          const tasksPart = relevantTasks ? `The job requires ${relevantTasks}, which Jupyter excels at.` : 'It combines code, visualizations, and documentation in one place - essential for ML workflows.';
+          reason = `Jupyter Notebooks are the standard environment for data science and ML work, required by ${demand.toLocaleString()}+ roles. ${useCasePart} ${tasksPart}`;
+        } else {
+          const useCasePart = specificUseCase ? `This role needs Jupyter for ${specificUseCase}.` : "It's the industry standard for interactive data analysis, model prototyping, and sharing research.";
+          const tasksPart = relevantTasks ? `You'll use it to ${relevantTasks}.` : '';
+          reason = `Jupyter Notebooks are required for ${demand.toLocaleString()}+ data science and ML positions. ${useCasePart} Most ML teams use Jupyter for experimentation and collaboration. ${tasksPart}`;
+        }
+      } else if (skill === 'scikit-learn' || skill === 'sklearn') {
+        if (userSkillsList.includes('python') && userSkillsList.includes('pandas')) {
+          const useCasePart = specificUseCase ? `In this position, you'll use scikit-learn to ${specificUseCase}.` : "With your Python and pandas foundation, scikit-learn is the next logical step for building and training ML models.";
+          const tasksPart = relevantTasks ? `The job requires ${relevantTasks}, which scikit-learn handles.` : 'It provides ready-to-use algorithms for classification, regression, clustering, and more.';
+          reason = `Scikit-learn is the most popular ML library in Python, required by ${demand.toLocaleString()}+ ML roles. ${useCasePart} ${tasksPart}`;
+        } else if (userSkillsList.includes('python')) {
+          const useCasePart = specificUseCase ? `This role needs scikit-learn to ${specificUseCase}.` : "It's Python's primary ML library, providing algorithms for supervised and unsupervised learning.";
+          const tasksPart = relevantTasks ? `You'll use it to ${relevantTasks}.` : '';
+          reason = `Scikit-learn is essential for ${demand.toLocaleString()}+ machine learning positions. ${useCasePart} You'll need pandas first for data preparation, then scikit-learn for model training. ${tasksPart}`;
+        } else {
+          const useCasePart = specificUseCase ? `This position requires scikit-learn for ${specificUseCase}.` : "It's the industry standard Python library for machine learning algorithms.";
+          const tasksPart = relevantTasks ? `The job requires ${relevantTasks}.` : '';
+          reason = `Scikit-learn is required for ${demand.toLocaleString()}+ ML roles. ${useCasePart} You'll need Python and pandas as prerequisites. ${tasksPart}`;
+        }
+      } else if (skill === 'data visualization') {
+        if (userSkillsList.includes('python')) {
+          const useCasePart = specificUseCase ? `In this role, you'll create visualizations to ${specificUseCase}.` : "With Python, you can use libraries like matplotlib and seaborn to turn data into insights.";
+          const tasksPart = relevantTasks ? `The job requires ${relevantTasks}, which visualization enables.` : 'Visualizations help communicate findings to stakeholders and identify patterns in data.';
+          reason = `Data visualization is crucial for ${demand.toLocaleString()}+ data roles. ${useCasePart} ${tasksPart}`;
+        } else {
+          const useCasePart = specificUseCase ? `This role needs visualization to ${specificUseCase}.` : 'It helps communicate data insights effectively to both technical and non-technical audiences.';
+          const tasksPart = relevantTasks ? `You'll create visualizations for ${relevantTasks}.` : 'Tools like matplotlib, seaborn, or Tableau are commonly used.';
+          reason = `Data visualization enhances your profile for ${demand.toLocaleString()}+ opportunities. ${useCasePart} ${tasksPart}`;
         }
       } else {
-        // Generic explanation for other skills
+        // Enhanced generic explanation with JD context
         const complementarySkills = this.getComplementarySkills(skill);
         const userHasComplementary = complementarySkills.some(s => userSkillsList.includes(s.toLowerCase()));
         
         if (priority === 'required') {
           if (userHasComplementary) {
-            reason = `${skill} is required for this role and appears in ${demand.toLocaleString()}+ job postings. Your existing ${complementarySkills.find(s => userSkillsList.includes(s.toLowerCase()))} experience provides a good foundation for learning ${skill}. These skills often work together in real projects.`;
+            const complementarySkill = complementarySkills.find(s => userSkillsList.includes(s.toLowerCase()));
+            const useCasePart = specificUseCase ? `Specifically, you'll use ${skill} to ${specificUseCase}.` : `Your existing ${complementarySkill} experience provides a good foundation for learning ${skill}.`;
+            const tasksPart = relevantTasks ? `The job description mentions ${relevantTasks}, which requires ${skill}.` : 'These skills often work together in real projects.';
+            reason = `${skill} is required for this role and appears in ${demand.toLocaleString()}+ job postings. ${useCasePart} ${tasksPart}`;
           } else {
-            reason = `${skill} is a required skill for this position, appearing in ${demand.toLocaleString()}+ job listings in the ${roleCategory} field. This skill is essential for performing core job responsibilities and is non-negotiable for most employers in this role.`;
+            const useCasePart = specificUseCase ? `In this role, you'll use ${skill} to ${specificUseCase}.` : 'This skill is essential for performing core job responsibilities and is non-negotiable for most employers in this role.';
+            const tasksPart = relevantTasks ? `Specifically, you'll need it to ${relevantTasks}.` : '';
+            reason = `${skill} is a required skill for this position, appearing in ${demand.toLocaleString()}+ job listings in the ${roleCategory} field. ${useCasePart} ${tasksPart}`;
           }
         } else {
-          reason = `${skill} enhances your profile for ${demand.toLocaleString()}+ opportunities in ${roleCategory}. While not always required, having this skill significantly improves your competitiveness and may qualify you for higher-level positions or specialized projects.`;
+          const useCasePart = specificUseCase ? `While not always required, this role would benefit from ${skill} to ${specificUseCase}.` : 'While not always required, having this skill significantly improves your competitiveness and may qualify you for higher-level positions or specialized projects.';
+          const tasksPart = relevantTasks ? `It would help with ${relevantTasks}.` : '';
+          reason = `${skill} enhances your profile for ${demand.toLocaleString()}+ opportunities in ${roleCategory}. ${useCasePart} ${tasksPart}`;
         }
       }
       
@@ -630,6 +712,188 @@ export class RealMarketAnalysisEngine {
         learningPath
       }
     };
+  }
+
+  // Extract specific tasks from job description
+  private extractTasksFromJD(jdText: string): string[] {
+    if (!jdText) return [];
+    
+    const tasks: string[] = [];
+    const lowerText = jdText.toLowerCase();
+    
+    // Look for bullet points or numbered lists
+    const bulletPattern = /[•\-\*]\s*([^•\n]+)/gi;
+    const numberedPattern = /\d+[\.\)]\s*([^\d\n]+)/gi;
+    
+    let match;
+    while ((match = bulletPattern.exec(jdText)) !== null) {
+      const task = match[1].trim();
+      if (task.length > 10 && task.length < 200) {
+        tasks.push(task);
+      }
+    }
+    
+    while ((match = numberedPattern.exec(jdText)) !== null) {
+      const task = match[1].trim();
+      if (task.length > 10 && task.length < 200) {
+        tasks.push(task);
+      }
+    }
+    
+    // Look for "you'll" or "you will" patterns
+    const youWillPattern = /you'?ll\s+([^.!?]+)/gi;
+    while ((match = youWillPattern.exec(lowerText)) !== null) {
+      const task = match[1].trim();
+      if (task.length > 10 && task.length < 200) {
+        tasks.push(task);
+      }
+    }
+    
+    return tasks.slice(0, 10); // Limit to top 10 tasks
+  }
+
+  // Extract relevant keywords from JD
+  private extractRelevantKeywords(jdText: string, roleCategory: string): string[] {
+    if (!jdText) return [];
+    
+    const keywords: string[] = [];
+    const lowerText = jdText.toLowerCase();
+    
+    // Common action verbs in job descriptions
+    const actionVerbs = ['build', 'develop', 'create', 'design', 'implement', 'analyze', 'optimize', 'improve', 'maintain', 'deploy', 'test', 'debug', 'collaborate', 'work with'];
+    
+    for (const verb of actionVerbs) {
+      const pattern = new RegExp(`${verb}\\s+([^.!?,\\n]+)`, 'gi');
+      let match;
+      while ((match = pattern.exec(lowerText)) !== null && keywords.length < 15) {
+        const phrase = match[1].trim();
+        if (phrase.length > 5 && phrase.length < 100) {
+          keywords.push(phrase);
+        }
+      }
+    }
+    
+    return keywords;
+  }
+
+  // Find tasks relevant to a specific skill
+  private findRelevantTasksForSkill(skill: string, tasks: string[], jdText: string): string | null {
+    if (!jdText || tasks.length === 0) return null;
+    
+    const skillLower = skill.toLowerCase();
+    const skillWords = skillLower.split(/\s+/);
+    const lowerText = jdText.toLowerCase();
+    
+    // Find tasks that mention the skill or related terms
+    const relevantTasks = tasks.filter(task => {
+      const taskLower = task.toLowerCase();
+      return skillWords.some(word => taskLower.includes(word)) ||
+             this.isSkillRelatedToTask(skill, task);
+    });
+    
+    if (relevantTasks.length > 0) {
+      // Return the most relevant task (first one found)
+      const task = relevantTasks[0];
+      // Clean up the task text
+      return task.length > 100 ? task.substring(0, 100) + '...' : task;
+    }
+    
+    // If no direct match, look for context around the skill in JD
+    const skillPattern = new RegExp(`([^.!?]{0,50}${skillWords[0]}[^.!?]{0,50})`, 'i');
+    const contextMatch = skillPattern.exec(lowerText);
+    if (contextMatch) {
+      return contextMatch[1].trim();
+    }
+    
+    return null;
+  }
+
+  // Check if a skill is related to a task
+  private isSkillRelatedToTask(skill: string, task: string): boolean {
+    const skillLower = skill.toLowerCase();
+    const taskLower = task.toLowerCase();
+    
+    // Skill-task relationships
+    const relationships: Record<string, string[]> = {
+      'machine learning': ['model', 'predict', 'algorithm', 'train', 'dataset', 'ml', 'ai'],
+      'statistics': ['analyze', 'data', 'probability', 'hypothesis', 'test', 'distribution'],
+      'sql': ['database', 'query', 'data', 'extract', 'join', 'table'],
+      'pandas': ['data', 'clean', 'transform', 'dataframe', 'dataset', 'analysis'],
+      'python': ['code', 'script', 'program', 'develop', 'build', 'automate'],
+      'jupyter': ['notebook', 'experiment', 'analysis', 'prototype', 'explore'],
+      'scikit-learn': ['model', 'train', 'algorithm', 'classify', 'regress', 'ml'],
+      'data visualization': ['visualize', 'chart', 'graph', 'plot', 'dashboard', 'report']
+    };
+    
+    for (const [key, relatedTerms] of Object.entries(relationships)) {
+      if (skillLower.includes(key) || key.includes(skillLower)) {
+        return relatedTerms.some(term => taskLower.includes(term));
+      }
+    }
+    
+    return false;
+  }
+
+  // Get specific use case for a skill from job description
+  private getSpecificUseCase(skill: string, jdText: string, roleCategory: string): string | null {
+    if (!jdText) return null;
+    
+    const skillLower = skill.toLowerCase();
+    const lowerText = jdText.toLowerCase();
+    const skillWords = skillLower.split(/\s+/);
+    
+    // Look for patterns like "use [skill] to [action]" or "[skill] for [purpose]"
+    const useCasePatterns = [
+      new RegExp(`use\\s+${skillWords[0]}\\s+to\\s+([^.!?]+)`, 'i'),
+      new RegExp(`${skillWords[0]}\\s+for\\s+([^.!?]+)`, 'i'),
+      new RegExp(`with\\s+${skillWords[0]}[,\\s]+([^.!?]+)`, 'i'),
+      new RegExp(`using\\s+${skillWords[0]}[,\\s]+([^.!?]+)`, 'i')
+    ];
+    
+    for (const pattern of useCasePatterns) {
+      const match = pattern.exec(lowerText);
+      if (match && match[1]) {
+        const useCase = match[1].trim();
+        if (useCase.length > 10 && useCase.length < 150) {
+          return useCase;
+        }
+      }
+    }
+    
+    // Look for role-specific use cases
+    const roleUseCases: Record<string, Record<string, string>> = {
+      'ai/ml': {
+        'machine learning': 'build and train predictive models',
+        'statistics': 'validate model performance and interpret results',
+        'python': 'develop ML algorithms and data pipelines',
+        'pandas': 'clean and preprocess datasets for model training',
+        'jupyter notebooks': 'prototype models and share analysis',
+        'scikit-learn': 'implement classification and regression models',
+        'sql': 'extract training data from databases',
+        'data visualization': 'visualize model performance and data insights'
+      },
+      'data': {
+        'sql': 'query databases and extract data for analysis',
+        'python': 'analyze datasets and automate reporting',
+        'pandas': 'manipulate and clean data for analysis',
+        'excel': 'create reports and dashboards',
+        'data visualization': 'create charts and dashboards to communicate insights',
+        'statistics': 'perform statistical analysis and hypothesis testing'
+      }
+    };
+    
+    const categoryLower = roleCategory.toLowerCase();
+    for (const [category, useCases] of Object.entries(roleUseCases)) {
+      if (categoryLower.includes(category) || categoryLower.includes(category.replace('/', ''))) {
+        for (const [skillKey, useCase] of Object.entries(useCases)) {
+          if (skillLower.includes(skillKey) || skillKey.includes(skillLower)) {
+            return useCase;
+          }
+        }
+      }
+    }
+    
+    return null;
   }
 }
 

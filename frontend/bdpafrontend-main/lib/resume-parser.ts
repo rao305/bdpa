@@ -1,6 +1,8 @@
 // Resume Parser - Extracts structured data from resume text
 // Auto-fills onboarding form fields
 
+import { extractSkillsFromText } from './normalization';
+
 export interface ParsedResumeData {
   skills: string[];
   education: {
@@ -29,7 +31,6 @@ export function parseResumeText(text: string, dictionary: Set<string>): ParsedRe
   };
 
   // Extract skills
-  const { extractSkillsFromText } = require('./normalization');
   parsed.skills = extractSkillsFromText(text, dictionary);
 
   // Extract education section once (reused for both education and coursework)

@@ -144,18 +144,64 @@ export function computeScores(input: ScoringInput): ScoringResult {
     
     impact = Math.min(100, internshipScore + metricsScore + quantScore + projectScore + achievementScore);
 
-    const hasSpacing = resume.includes('\n\n') ? 20 : 10;
-    const bulletLength = 20;
-    const consistentTense = 20;
-    const noReferences = !resume.includes('references available') ? 20 : 0;
-    const formatting = 20;
+    // Dynamic polish scoring based on actual resume content
+    const hasSpacing = resume.includes('\n\n') ? 20 : (resume.includes('\n') ? 10 : 0);
+    const bulletCount = (resume.match(/[•\-*]/g) || []).length;
+    const bulletLength = Math.min(20, Math.floor(bulletCount / 3) * 5); // More bullets = better formatting
+    const consistentTense = /\b(developed|built|led|managed|designed|implemented|created|analyzed|improved|optimized)\b/i.test(resume) ? 20 : 10;
+    const noReferences = !resume.includes('references available') && !resume.includes('reference') ? 20 : 0;
+    const hasContactInfo = /\b[\w._%+-]+@[\w.-]+\.[A-Z|a-z]{2,}\b/.test(resume) ? 10 : 0;
+    const appropriateLength = resume.length > 500 && resume.length < 3000 ? 10 : (resume.length > 200 ? 5 : 0);
+    const formatting = hasSpacing > 0 && bulletLength > 0 ? 10 : 5;
 
-    polish = hasSpacing + bulletLength + consistentTense + noReferences + formatting;
+    polish = Math.min(100, hasSpacing + bulletLength + consistentTense + noReferences + hasContactInfo + appropriateLength + formatting);
+    
+    // Store polish evidence
+    meta.polishCalculation = `Spacing (${hasSpacing}) + Bullets (${bulletLength}) + Tense (${consistentTense}) + No References (${noReferences}) + Contact (${hasContactInfo}) + Length (${appropriateLength}) + Formatting (${formatting}) = ${polish}%`;
+    meta.polishDetails = `Resume has ${bulletCount} bullet points, ${resume.length} characters, ${hasContactInfo > 0 ? 'contact info' : 'no contact info'}`;
+    meta.polishBreakdown = `Formatting quality: Spacing (${hasSpacing}/20), Bullets (${bulletLength}/20), Consistent tense (${consistentTense}/20), No references (${noReferences}/20), Contact info (${hasContactInfo}/10), Length (${appropriateLength}/10), Formatting (${formatting}/10)`;
 
+    // Store detailed evidence for each score
     meta = {
+      // Alignment evidence
+      alignmentHits,
+      allRequiredTokens: allRequiredTokens.size,
+      jdSkills: jdSkills.length,
+      alignmentCalculation: `(${alignmentHits} matching skills / ${allRequiredTokens.size} required skills) × 100 = ${alignment}%`,
+      alignmentBreakdown: `Found ${jdSkills.length} skills in job description. You match ${alignmentHits} out of ${allRequiredTokens.size} required skills.`,
+      
+      // Readiness evidence
+      metRequired,
+      requiredSkillsCount: requiredSkills.length,
+      readinessCalculation: `(${metRequired} required skills met / ${requiredSkills.length} total required) × 100 = ${readiness}%`,
+      readinessBreakdown: `You have ${metRequired} out of ${requiredSkills.length} required skills (${metPreferred} preferred skills).`,
+      
+      // Impact evidence
       internships,
       projectsWithMetrics,
       quantBullets,
+      projectMentions,
+      techAchievements,
+      impactCalculation: `Internships (${internships} × 10) + Metrics (${projectsWithMetrics} × 5) + Quantified (${Math.floor(quantBullets / 5)} × 5) + Projects (${Math.floor(projectMentions / 2)} × 5) + Achievements (${Math.floor(techAchievements / 2)} × 5) = ${impact}%`,
+      impactDetails: `Found ${internships} internships, ${projectsWithMetrics} projects with metrics, ${projectMentions} project mentions, ${techAchievements} technical achievements`,
+      impactBreakdown: `Internship score: ${internshipScore}/30, Metrics: ${metricsScore}/25, Quantified bullets: ${quantScore}/15, Projects: ${projectScore}/15, Achievements: ${achievementScore}/15`,
+      
+      // ATS evidence
+      hasHeaders: /experience|education|skills/i.test(input.resumeText || '') ? 20 : 0,
+      hasBullets: (input.resumeText?.match(/[•\-*]/g) || []).length >= 5 ? 20 : 0,
+      hasDates: (input.resumeText?.match(/\d{4}/g) || []).length >= 2 ? 15 : 0,
+      hasActionVerbs: /\b(developed|built|led|managed|designed|implemented|created|analyzed)\b/i.test(input.resumeText || '') ? 25 : 0,
+      hasKeywords: (jdSkills || []).some((s: string) => (input.resumeText || '').toLowerCase().includes(s)) ? 20 : 0,
+      atsCalculation: `Headers (${/experience|education|skills/i.test(input.resumeText || '') ? 20 : 0}) + Bullets (${(input.resumeText?.match(/[•\-*]/g) || []).length >= 5 ? 20 : 0}) + Dates (${(input.resumeText?.match(/\d{4}/g) || []).length >= 2 ? 15 : 0}) + Action Verbs (${/\b(developed|built|led|managed|designed|implemented|created|analyzed)\b/i.test(input.resumeText || '') ? 25 : 0}) + Keywords (${(jdSkills || []).some((s: string) => (input.resumeText || '').toLowerCase().includes(s)) ? 20 : 0}) = ${ats}%`,
+      atsDetails: `Resume has proper sections: ${/experience|education|skills/i.test(input.resumeText || '') ? 'Yes' : 'No'}, Bullet points: ${(input.resumeText?.match(/[•\-*]/g) || []).length >= 5 ? 'Yes' : 'No'}, Dates: ${(input.resumeText?.match(/\d{4}/g) || []).length >= 2 ? 'Yes' : 'No'}, Action verbs: ${/\b(developed|built|led|managed|designed|implemented|created|analyzed)\b/i.test(input.resumeText || '') ? 'Yes' : 'No'}, Keywords: ${(jdSkills || []).some((s: string) => (input.resumeText || '').toLowerCase().includes(s)) ? 'Yes' : 'No'}`,
+      atsBreakdown: `Formatting check: Headers (${/experience|education|skills/i.test(input.resumeText || '') ? 20 : 0}/20), Bullets (${(input.resumeText?.match(/[•\-*]/g) || []).length >= 5 ? 20 : 0}/20), Dates (${(input.resumeText?.match(/\d{4}/g) || []).length >= 2 ? 15 : 0}/15), Action Verbs (${/\b(developed|built|led|managed|designed|implemented|created|analyzed)\b/i.test(input.resumeText || '') ? 25 : 0}/25), Keywords (${(jdSkills || []).some((s: string) => (input.resumeText || '').toLowerCase().includes(s)) ? 20 : 0}/20)`,
+      
+      // Potential evidence (calculated dynamically above)
+      hasDeepProject: input.userSkills.length >= 5 ? 1 : (input.userSkills.length >= 3 ? 0.5 : 0),
+      courseworkDensity: Math.min(5, Math.max(0, input.userSkills.length / 2)),
+      foundationBonus: (userSkillSet.has('python') || userSkillSet.has('javascript')) ? 10 : 
+                      (userSkillSet.has('java') || userSkillSet.has('c++') || userSkillSet.has('sql')) ? 5 : 0,
+      
       bulletCount: hasBullets > 0 ? Math.min(10, Math.floor(hasBullets / 2)) : 0,
       mlAnalysis: mlAnalysis ? {
         keywordMatches: mlAnalysis.keywordMatches,
@@ -168,13 +214,46 @@ export function computeScores(input: ScoringInput): ScoringResult {
     ats = 0;
     impact = Math.min(100, 20 * (userSkillSet.size >= 5 ? 1 : 0) + 30 * metRequired);
     polish = 0;
+    
+    // Store evidence even without resume
+    meta = {
+      alignmentHits,
+      allRequiredTokens: allRequiredTokens.size,
+      jdSkills: jdSkills.length,
+      alignmentCalculation: `(${alignmentHits} matching skills / ${allRequiredTokens.size} required skills) × 100 = ${alignment}%`,
+      alignmentBreakdown: `Found ${jdSkills.length} skills in job description. You match ${alignmentHits} out of ${allRequiredTokens.size} required skills.`,
+      
+      metRequired,
+      requiredSkillsCount: requiredSkills.length,
+      readinessCalculation: `(${metRequired} required skills met / ${requiredSkills.length} total required) × 100 = ${readiness}%`,
+      readinessBreakdown: `You have ${metRequired} out of ${requiredSkills.length} required skills (${metPreferred} preferred skills).`,
+      
+      impactCalculation: `Skills (${userSkillSet.size >= 5 ? 20 : 0}) + Required Skills (${metRequired * 30}) = ${impact}%`,
+      impactDetails: `Based on ${userSkillSet.size} skills and ${metRequired} required skills met`,
+      impactBreakdown: `No resume provided. Score based on skill count and required skills matching.`,
+      
+      // Potential will be calculated and updated after potential variable is set
+    };
   }
 
-  // Intern-specific potential calculation - more generous for beginners
-  const hasDeepProject = input.userSkills.length >= 5 ? 1 : 0; // Lower threshold for interns
-  const courseworkDensity = Math.min(5, input.userSkills.length / 2); // More generous calculation
-  const foundationBonus = userSkillSet.has('python') || userSkillSet.has('javascript') ? 10 : 0;
-  const potential = Math.min(100, readiness + 15 * hasDeepProject + 15 * courseworkDensity + foundationBonus);
+  // Dynamic potential calculation based on actual user data
+  const skillCount = input.userSkills.length;
+  const hasDeepProject = skillCount >= 5 ? 1 : (skillCount >= 3 ? 0.5 : 0);
+  const courseworkDensity = Math.min(5, Math.max(0, skillCount / 2)); // Based on actual skill count
+  const foundationBonus = (userSkillSet.has('python') || userSkillSet.has('javascript')) ? 10 : 
+                         (userSkillSet.has('java') || userSkillSet.has('c++') || userSkillSet.has('sql')) ? 5 : 0;
+  
+  // Calculate potential dynamically
+  const deepProjectScore = hasDeepProject * 15;
+  const courseworkScore = courseworkDensity * 15;
+  const potential = Math.min(100, readiness + deepProjectScore + courseworkScore + foundationBonus);
+  
+  // Update potential evidence in meta (calculated after potential is determined)
+  if (Object.keys(meta).length > 0) {
+    meta.potentialCalculation = `Readiness (${readiness}) + Deep Project (${deepProjectScore}) + Coursework (${courseworkScore.toFixed(1)}) + Foundation Bonus (${foundationBonus}) = ${potential}%`;
+    meta.potentialDetails = `You have ${skillCount} skills, ${hasDeepProject >= 1 ? 'deep project experience' : hasDeepProject >= 0.5 ? 'moderate projects' : 'basic projects'}, ${courseworkDensity.toFixed(1)} coursework density, ${foundationBonus > 0 ? 'strong foundation' : 'developing foundation'}`;
+    meta.potentialBreakdown = `Based on ${skillCount} skills, ${hasDeepProject >= 1 ? 'substantial' : hasDeepProject >= 0.5 ? 'moderate' : 'basic'} project work, and ${foundationBonus > 0 ? 'strong' : 'developing'} programming foundation`;
+  }
 
   let overall = 0;
   if (input.resumeProvided) {
@@ -232,7 +311,9 @@ export function computeScores(input: ScoringInput): ScoringResult {
     missingSkills,
     userSkillSet,
     roleCategory,
-    prioritizedGaps
+    prioritizedGaps,
+    input.jdText,
+    input.jdTitle
   );
   
   // Add resume-specific improvements if applicable

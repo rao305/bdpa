@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, BookOpen, ExternalLink, Calendar } from 'lucide-react';
+import { Loader2, BookOpen, ExternalLink, Calendar, Database } from 'lucide-react';
+import SQLInstructor from '@/components/learn/sql-instructor';
 
 interface Task {
   id: string;
@@ -29,36 +30,74 @@ export default function LearnPage() {
   }, []);
 
   const loadData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/auth');
-      return;
+    try {
+      const supabase = createSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!user) {
+        router.push('/auth');
+        return;
+      }
+
+      // Use API endpoint instead of direct Supabase query
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch('/api/analyses', {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/auth');
+          return;
+        }
+        throw new Error('Failed to load analyses');
+      }
+
+      const data = await response.json();
+      const analyses = data.analyses || [];
+      
+      // Sort by created_at descending to get latest first
+      const sortedAnalyses = analyses.sort((a: any, b: any) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
+
+      if (sortedAnalyses.length > 0) {
+        const latestAnalysis = sortedAnalyses[0];
+        const missingSkills = latestAnalysis.missing_skills || [];
+        
+        if (missingSkills.length > 0) {
+          const generatedTasks = generateTasks(missingSkills.slice(0, 7));
+          setTasks(generatedTasks);
+
+          const resources = missingSkills
+            .slice(0, 10)
+            .flatMap((ms: any) =>
+              (ms.resources || []).map((r: any) => ({
+                ...r,
+                skill: ms.skill,
+              }))
+            );
+          setSavedResources(resources);
+        }
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading learning data:', error);
+      setLoading(false);
     }
-
-    const { data: analyses } = await supabase
-      .from('analyses')
-      .select('*')
-      .eq('uid', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (analyses && analyses.length > 0) {
-      const latestAnalysis = analyses[0];
-      const generatedTasks = generateTasks(latestAnalysis.missing_skills.slice(0, 7));
-      setTasks(generatedTasks);
-
-      const resources = latestAnalysis.missing_skills
-        .slice(0, 10)
-        .flatMap((ms: any) =>
-          (ms.resources || []).map((r: any) => ({
-            ...r,
-            skill: ms.skill,
-          }))
-        );
-      setSavedResources(resources);
-    }
-
-    setLoading(false);
   };
 
   const generateTasks = (missingSkills: any[]): Task[] => {
@@ -122,6 +161,10 @@ export default function LearnPage() {
           </TabsTrigger>
           <TabsTrigger value="completed">
             Completed ({completedTasks.length})
+          </TabsTrigger>
+          <TabsTrigger value="sql">
+            <Database className="h-4 w-4 mr-2" />
+            SQL Learning Hub
           </TabsTrigger>
         </TabsList>
 
@@ -227,6 +270,10 @@ export default function LearnPage() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="sql" className="space-y-4">
+          <SQLInstructor />
         </TabsContent>
       </Tabs>
 

@@ -12,7 +12,7 @@ export function ResumeDropzone({ onTextExtracted }: ResumeDropzoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [extracting, setExtracting] = useState(false);
 
-  const extractText = async (file: File) => {
+  const extractText = useCallback(async (file: File) => {
     setExtracting(true);
     try {
       // Upload file to API for proper PDF parsing
@@ -24,10 +24,21 @@ export function ResumeDropzone({ onTextExtracted }: ResumeDropzoneProps) {
         body: formData,
       });
       
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response received. Status:', response.status);
+        console.error('Response headers:', Object.fromEntries(response.headers.entries()));
+        console.error('Response body (first 500 chars):', text.substring(0, 500));
+        throw new Error(`Server returned an invalid response (${response.status}). Please check the console for details.`);
+      }
+      
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to upload and parse PDF');
+        console.error('API error response:', data);
+        throw new Error(data.error || data.message || 'Failed to upload and parse PDF');
       }
       
       if (data.text && data.text.length >= 50) {
@@ -42,7 +53,7 @@ export function ResumeDropzone({ onTextExtracted }: ResumeDropzoneProps) {
     } finally {
       setExtracting(false);
     }
-  };
+  }, [onTextExtracted]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -52,14 +63,14 @@ export function ResumeDropzone({ onTextExtracted }: ResumeDropzoneProps) {
     if (file && file.type === 'application/pdf') {
       extractText(file);
     }
-  }, []);
+  }, [extractText]);
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type === 'application/pdf') {
       extractText(file);
     }
-  };
+  }, [extractText]);
 
   return (
     <Card

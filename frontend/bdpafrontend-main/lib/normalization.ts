@@ -72,8 +72,87 @@ export function normalizeSkills(skills: string[]): string[] {
 // Format skill for display (capitalize first letter, preserve rest)
 export function formatSkillForDisplay(skill: string): string {
   if (!skill || skill.length === 0) return skill;
-  // Capitalize first letter, lowercase the rest
-  return skill.charAt(0).toUpperCase() + skill.slice(1).toLowerCase();
+  
+  // Handle special cases with preserved capitalization
+  const specialCases: Record<string, string> = {
+    'javascript': 'JavaScript',
+    'typescript': 'TypeScript',
+    'python': 'Python',
+    'java': 'Java',
+    'c++': 'C++',
+    'c#': 'C#',
+    'node.js': 'Node.js',
+    'nodejs': 'Node.js',
+    'react': 'React',
+    'vue': 'Vue',
+    'angular': 'Angular',
+    'tensorflow': 'TensorFlow',
+    'pytorch': 'PyTorch',
+    'machine learning': 'Machine Learning',
+    'deep learning': 'Deep Learning',
+    'data science': 'Data Science',
+    'artificial intelligence': 'Artificial Intelligence',
+    'natural language processing': 'Natural Language Processing',
+    'computer vision': 'Computer Vision',
+    'sql': 'SQL',
+    'nosql': 'NoSQL',
+    'html': 'HTML',
+    'css': 'CSS',
+    'api': 'API',
+    'rest': 'REST',
+    'graphql': 'GraphQL',
+    'aws': 'AWS',
+    'gcp': 'GCP',
+    'azure': 'Azure',
+    'docker': 'Docker',
+    'kubernetes': 'Kubernetes',
+    'k8s': 'Kubernetes',
+    'git': 'Git',
+    'github': 'GitHub',
+    'gitlab': 'GitLab',
+    'linux': 'Linux',
+    'unix': 'Unix',
+    'ios': 'iOS',
+    'android': 'Android',
+    'ml': 'ML',
+    'ai': 'AI',
+    'nlp': 'NLP',
+    'cv': 'CV',
+    'ui': 'UI',
+    'ux': 'UX',
+    'ci/cd': 'CI/CD',
+    'devops': 'DevOps',
+  };
+  
+  const lower = skill.toLowerCase().trim();
+  if (specialCases[lower]) {
+    return specialCases[lower];
+  }
+  
+  // Handle acronyms (all caps if 2-4 letters)
+  if (/^[A-Z]{2,4}$/.test(skill)) {
+    return skill.toUpperCase();
+  }
+  
+  // Handle camelCase/PascalCase (preserve as-is)
+  if (/^[A-Z][a-z]+([A-Z][a-z]+)+$/.test(skill)) {
+    return skill;
+  }
+  
+  // Handle skills with dots, dashes, slashes (preserve structure)
+  if (/[.\-/#]/.test(skill)) {
+    return skill.split(/[.\-/#]/).map(word => {
+      const trimmed = word.trim();
+      if (trimmed.length === 0) return word;
+      return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+    }).join(skill.match(/[.\-/#]/)?.[0] || '');
+  }
+  
+  // Default: Capitalize first letter of each word
+  return skill.split(' ').map(word => {
+    if (word.length === 0) return word;
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(' ');
 }
 
 export function extractSkillsFromText(text: string, dictionary: Set<string>): string[] {

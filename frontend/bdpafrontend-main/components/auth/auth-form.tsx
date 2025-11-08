@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,29 +22,17 @@ export function AuthForm() {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const supabase = createSupabaseClient();
+      
+      // Sign up using Supabase client (session will be managed automatically)
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
       });
 
-      const result = await response.json();
-
-      if (result.error) {
-        setMessage({ type: 'error', text: result.error });
-      } else if (result.user) {
-        // Save session directly - user already created server-side
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('skillgap_session', JSON.stringify(result.user));
-          document.cookie = `skillgap_session=${JSON.stringify(result.user)}; path=/; max-age=86400`;
-        }
-        
-        // Also create in IndexedDB for client-side queries
-        const { user: localUser, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        
+      if (error) {
+        setMessage({ type: 'error', text: error.message });
+      } else if (data.user) {
         setMessage({ type: 'success', text: 'Account created! Redirecting...' });
         setTimeout(() => {
           window.location.href = '/onboarding';
@@ -63,34 +51,17 @@ export function AuthForm() {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const supabase = createSupabaseClient();
+      
+      // Sign in using Supabase client (session will be managed automatically)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const result = await response.json();
-
-      if (result.error) {
-        setMessage({ type: 'error', text: result.error });
-      } else if (result.user) {
-        // Save session directly
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('skillgap_session', JSON.stringify(result.user));
-          document.cookie = `skillgap_session=${JSON.stringify(result.user)}; path=/; max-age=86400`;
-        }
-        
-        // Try to sync to IndexedDB for client-side queries (non-blocking)
-        try {
-          await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-        } catch (syncError) {
-          // IndexedDB sync failed, but session is set, so continue
-          console.log('IndexedDB sync failed, but session is set:', syncError);
-        }
-
+      if (error) {
+        setMessage({ type: 'error', text: error.message });
+      } else if (data.user) {
         // ALWAYS go to onboarding (data collection) after sign in
         // Workflow: Sign In → Data Collection (Onboarding) → Analyzer
         window.location.href = '/onboarding';
@@ -107,16 +78,21 @@ export function AuthForm() {
     setLoading(true);
     setMessage(null);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset`,
-    });
+    try {
+      const supabase = createSupabaseClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset`,
+      });
 
-    setLoading(false);
-
-    if (error) {
-      setMessage({ type: 'error', text: error.message });
-    } else {
-      setMessage({ type: 'success', text: 'Password reset email sent!' });
+      if (error) {
+        setMessage({ type: 'error', text: error.message });
+      } else {
+        setMessage({ type: 'success', text: 'Password reset email sent!' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to send reset email' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -124,7 +100,7 @@ export function AuthForm() {
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">GapFixer</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">SkillSharp</CardTitle>
           <CardDescription className="text-center">
             Sign in to analyze your skills and close the gap
           </CardDescription>

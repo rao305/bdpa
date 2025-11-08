@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -34,12 +34,14 @@ export function Navigation() {
   }, []);
 
   const checkUser = async () => {
+    const supabase = createSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
     setLoading(false);
   };
 
   const handleSignOut = async () => {
+    const supabase = createSupabaseClient();
     await supabase.auth.signOut();
     router.push('/');
   };
@@ -55,33 +57,49 @@ export function Navigation() {
     { href: '/learn', label: 'Learning Hub', icon: BookOpen },
   ];
 
+  const isHomeActive = pathname === '/dashboard';
+
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="container max-w-7xl mx-auto px-4">
         <div className="flex h-14 items-center justify-between">
           <div className="flex items-center space-x-6">
             <Button
-              variant="ghost"
-              onClick={() => router.push('/dashboard')}
+              variant={isHomeActive ? 'secondary' : 'ghost'}
+              onClick={() => {
+                // Only navigate if not already on dashboard
+                if (pathname !== '/dashboard') {
+                  router.push('/dashboard');
+                }
+              }}
               className="flex items-center space-x-2 font-bold text-lg"
+              disabled={isHomeActive}
             >
               <Home className="h-5 w-5" />
-              <span>GapFixer</span>
+              <span>Home</span>
             </Button>
             
-            <div className="hidden md:flex items-center space-x-1">
+            <div className="flex items-center space-x-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
                 return (
                   <Button
                     key={item.href}
                     variant={isActive ? 'secondary' : 'ghost'}
-                    onClick={() => router.push(item.href)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      // Only navigate if not already on that page
+                      if (pathname !== item.href) {
+                        router.push(item.href);
+                      }
+                    }}
                     className="flex items-center space-x-2"
+                    disabled={isActive}
+                    size="sm"
                   >
                     <Icon className="h-4 w-4" />
-                    <span>{item.label}</span>
+                    <span className="hidden sm:inline">{item.label}</span>
                   </Button>
                 );
               })}
