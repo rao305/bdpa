@@ -98,11 +98,10 @@ class LocalAuthService {
       });
 
       // Save session (without password)
-      const sessionUser = { ...user };
-      delete sessionUser.password;
-      this.saveSession(sessionUser);
+      const { password: _, ...sessionUser } = user;
+      this.saveSession(sessionUser as any);
 
-      return { user: sessionUser, error: null };
+      return { user: sessionUser as any, error: null };
     } catch (error) {
       return { user: null, error: error as Error };
     }
@@ -121,11 +120,10 @@ class LocalAuthService {
       }
 
       // Save session (without password)
-      const sessionUser = { ...user };
-      delete sessionUser.password;
-      this.saveSession(sessionUser);
+      const { password: _pwd, ...sessionUser } = user;
+      this.saveSession(sessionUser as any);
 
-      return { user: sessionUser, error: null };
+      return { user: sessionUser as any, error: null };
     } catch (error) {
       return { user: null, error: error as Error };
     }

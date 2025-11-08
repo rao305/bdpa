@@ -111,7 +111,7 @@ export async function GET() {
     
     // Dynamically generate skill combinations based on common patterns
     // This would ideally come from analyzing job postings, but for now we'll infer from skill categories
-    skillCombinations = generateSkillCombinations(marketData);
+    const skillCombinations = generateSkillCombinations(marketData);
     
     return NextResponse.json({
       marketData,

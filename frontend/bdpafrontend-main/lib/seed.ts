@@ -1,12 +1,13 @@
-import { supabase } from './supabase';
+import { createSupabaseClient } from './supabase-client';
 import { seedRoles, seedResources } from './seed-data';
 
 export async function seedDatabase() {
   console.log('Seeding database...');
+  const supabase = createSupabaseClient();
 
   for (const role of seedRoles) {
-    const { error } = await supabase
-      .from('roles')
+    const { error } = await (supabase
+      .from('roles') as any)
       .upsert(role, { onConflict: 'id' });
 
     if (error) {
@@ -17,8 +18,8 @@ export async function seedDatabase() {
   console.log('Roles seeded successfully');
 
   for (const resource of seedResources) {
-    const { error } = await supabase
-      .from('resources')
+    const { error } = await (supabase
+      .from('resources') as any)
       .insert(resource);
 
     if (error && !error.message.includes('duplicate')) {

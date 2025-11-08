@@ -47,12 +47,13 @@ export default function ProfilePage() {
       .maybeSingle();
 
     if (profile) {
-      setIsStudent(profile.is_student || false);
-      setYear(profile.year || '');
-      setMajor(profile.major || '');
-      setSkills(profile.skills || []);
-      setCoursework(profile.coursework || []);
-      setTargetCategory(profile.target_category || '');
+      const profileData = profile as any;
+      setIsStudent(profileData.is_student || false);
+      setYear(profileData.year || '');
+      setMajor(profileData.major || '');
+      setSkills(profileData.skills || []);
+      setCoursework(profileData.coursework || []);
+      setTargetCategory(profileData.target_category || '');
     }
 
     setLoading(false);
@@ -64,8 +65,8 @@ export default function ProfilePage() {
 
     const normalizedSkills = normalizeSkills(skills);
 
-    const { error } = await supabase
-      .from('profiles')
+    const { error } = await (supabase
+      .from('profiles') as any)
       .update({
         is_student: isStudent,
         year: isStudent ? year : null,

@@ -7,69 +7,9 @@ export async function POST() {
   try {
     console.log('Starting database seeding...');
 
-    // Seed demo user
-    console.log('Seeding demo user...');
-    const demoEmail = 'rao305@purdue.edu';
-    const demoPassword = 'demo1';
-    const existingDemoUser = await serverStorage.getUserByEmail(demoEmail);
-    
-    if (!existingDemoUser) {
-      // Create user using Supabase Auth (password will be hashed by Supabase)
-      const demoUser = await serverStorage.createUser({
-        email: demoEmail,
-        password: demoPassword,
-      });
-      
-      // Create demo profile with minimal data (user will fill it out)
-      await serverStorage.saveProfile({
-        uid: demoUser.id,
-        first_time: true,
-        is_student: false,
-        year: null,
-        major: null,
-        skills: [],
-        coursework: [],
-        experience: [],
-        target_category: null,
-        resume_text: null,
-      });
-      
-      console.log('Demo user created:', demoEmail);
-    } else {
-      // Update existing demo user profile to have minimal data
-      const existingProfile = await serverStorage.getProfile(existingDemoUser.id);
-      if (existingProfile) {
-        await serverStorage.saveProfile({
-          ...(existingProfile as any),
-          first_time: true,
-          is_student: false,
-          year: null,
-          major: null,
-          skills: [],
-          coursework: [],
-          experience: [],
-          target_category: null,
-          resume_text: null,
-          updated_at: new Date().toISOString(),
-        });
-        console.log('Demo user profile reset to minimal data');
-      } else {
-        // Create profile if it doesn't exist
-        await serverStorage.saveProfile({
-          uid: existingDemoUser.id,
-          first_time: true,
-          is_student: false,
-          year: null,
-          major: null,
-          skills: [],
-          coursework: [],
-          experience: [],
-          target_category: null,
-          resume_text: null,
-        });
-        console.log('Demo user profile created');
-      }
-    }
+    // Note: Demo user creation is handled through normal signup flow
+    // Demo credentials: rao305@purdue.edu / demo11
+    console.log('Demo user should be created through signup flow: rao305@purdue.edu / demo11');
 
     // Seed roles
     console.log('Seeding roles...');
@@ -108,7 +48,6 @@ export async function POST() {
       counts: {
         roles: finalRoles.length,
         resources: finalResources.length,
-        demoUser: existingDemoUser ? 'already exists' : 'created',
       }
     });
 

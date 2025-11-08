@@ -166,7 +166,7 @@ CREATE TRIGGER update_analyses_updated_at BEFORE UPDATE ON analyses
     `;
 
     // Execute the migration
-    const { error } = await supabase.rpc('exec_sql', {
+    const { error } = await (supabase.rpc as any)('exec_sql', {
       sql: migrationSQL
     });
 

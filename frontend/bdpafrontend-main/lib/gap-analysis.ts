@@ -69,7 +69,7 @@ export function analyzeSkillGaps(input: GapAnalysisInput): GapAnalysisResult {
   const jdSkills = extractSkillsFromText(input.jdText, input.dictionary);
   
   // Initialize market analysis engine with provided market data or load dynamically
-  const marketEngine = new RealMarketAnalysisEngine(input.marketData);
+  const marketEngine = new RealMarketAnalysisEngine((input as any).marketData);
   
   // Calculate gaps
   const skillGaps = calculateSkillGaps(input, userSkillSet, jdSkills, marketEngine);

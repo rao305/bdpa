@@ -78,7 +78,7 @@ export class TFIDFVectorizer {
       const uniqueTerms = new Set(terms);
       
       // Count document frequency for each unique term
-      for (const term of uniqueTerms) {
+      for (const term of Array.from(uniqueTerms)) {
         this.documentFrequency.set(term, (this.documentFrequency.get(term) || 0) + 1);
         termCounts.set(term, (termCounts.get(term) || 0) + 1);
       }
@@ -131,7 +131,7 @@ export class SimilarityCalculator {
     let norm1 = 0;
     let norm2 = 0;
     
-    for (const term of terms) {
+    for (const term of Array.from(terms)) {
       const val1 = vec1[term] || 0;
       const val2 = vec2[term] || 0;
       
@@ -146,8 +146,8 @@ export class SimilarityCalculator {
   }
 
   static jaccardSimilarity(set1: Set<string>, set2: Set<string>): number {
-    const intersection = new Set([...set1].filter(x => set2.has(x)));
-    const union = new Set([...set1, ...set2]);
+    const intersection = new Set(Array.from(set1).filter(x => set2.has(x)));
+    const union = new Set([...Array.from(set1), ...Array.from(set2)]);
     
     return union.size === 0 ? 0 : intersection.size / union.size;
   }
@@ -230,8 +230,8 @@ export class MLAnalysisEngine {
     alignmentScore = Math.min(1, alignmentScore + skillBoost);
     
     const missingKeywords = [
-      ...jdSkillSet.filter(skill => !resumeSkillSet.has(skill)),
-      ...requiredSkillSet.filter(skill => !resumeSkillSet.has(skill))
+      ...Array.from(jdSkillSet).filter(skill => !resumeSkillSet.has(skill)),
+      ...Array.from(requiredSkillSet).filter(skill => !resumeSkillSet.has(skill))
     ];
     
     // Calculate skill relevance scores

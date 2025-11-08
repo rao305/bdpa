@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
       first_time = false
     } = body;
 
-    const profileData = {
+    const profileData: any = {
       uid: user.id,
       is_student: is_student ?? false,
       year,

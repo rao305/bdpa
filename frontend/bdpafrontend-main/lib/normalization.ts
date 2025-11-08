@@ -162,7 +162,7 @@ export function extractSkillsFromText(text: string, dictionary: Set<string>): st
   const lowerText = text.toLowerCase();
   
   // Strategy 1: Check dictionary skills directly in the text (case-insensitive, whole word)
-  for (const skill of dictionary) {
+  for (const skill of Array.from(dictionary)) {
     const skillLower = skill.toLowerCase();
     // Look for whole word matches (not substring matches)
     // Handle multi-word skills and single-word skills differently
@@ -210,7 +210,7 @@ export function extractSkillsFromText(text: string, dictionary: Set<string>): st
           found.add(normalized);
         } else {
           // Also check if any dictionary skill contains this candidate or vice versa
-          for (const dictSkill of dictionary) {
+          for (const dictSkill of Array.from(dictionary)) {
             const dictLower = dictSkill.toLowerCase();
             const candidateLower = normalized.toLowerCase();
             // Fuzzy match: if one contains the other (for variations)
@@ -233,7 +233,7 @@ export function extractSkillsFromText(text: string, dictionary: Set<string>): st
   ];
   
   for (const pattern of techContextPatterns) {
-    const matches = text.matchAll(pattern);
+    const matches = Array.from(text.matchAll(pattern));
     for (const match of matches) {
       if (match[1]) {
         const candidate = match[1].trim();
@@ -252,7 +252,7 @@ export function extractSkillsFromText(text: string, dictionary: Set<string>): st
   ];
   
   for (const pattern of commonTechPatterns) {
-    const matches = text.matchAll(pattern);
+    const matches = Array.from(text.matchAll(pattern));
     for (const match of matches) {
       const candidate = match[0].toLowerCase();
       const normalized = normalizeSkill(candidate);

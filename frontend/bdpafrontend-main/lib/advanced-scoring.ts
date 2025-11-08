@@ -1,5 +1,18 @@
 import { extractSkillsFromText, normalizeSkills } from './normalization';
-import { MARKET_DEMAND } from './gap-analysis';
+
+// Market demand data (fallback values for skills)
+const MARKET_DEMAND: Record<string, number> = {
+  'python': 22016,
+  'sql': 18322,
+  'java': 12482,
+  'javascript': 9661,
+  'excel': 12221,
+  'aws': 8853,
+  'machine learning': 6000,
+  'c++': 5000,
+  'html': 11000,
+  'css': 10000,
+};
 
 // Benchmark data based on our market analysis for percentile rankings
 const SCORE_BENCHMARKS = {
@@ -555,7 +568,7 @@ function analyzeMarketInsights(input: DetailedAnalysisInput, scores: DetailedSco
   // Analyze skill demand for user's skills and missing skills
   const skillDemandAnalysis: Record<string, { current: number; trend: string; priority: number }> = {};
   
-  [...userSkillSet, ...jdSkills].forEach(skill => {
+  [...Array.from(userSkillSet), ...jdSkills].forEach(skill => {
     const demand = MARKET_DEMAND[skill] || 0;
     skillDemandAnalysis[skill] = {
       current: demand,

@@ -513,7 +513,7 @@ export default function DashboardPage() {
         topSkills.push(...latestSkills);
         
         // Update allSkills and skillMarketDemand for these skills
-        latestSkills.forEach((skill) => {
+        latestSkills.forEach((skill: string) => {
           if (!allSkills[skill]) {
             const demand = demandCache.has(skill) 
               ? demandCache.get(skill)! 
@@ -935,9 +935,9 @@ export default function DashboardPage() {
                       
                       if (topSkillsFromLatest.length > 0) {
                         const dataPoint: any = { period: periodLabel };
-                        topSkillsFromLatest.forEach((skill) => {
+                        topSkillsFromLatest.forEach((skill: string) => {
                           dataPoint[skill] = 1;
-                          skillsData.skillMarketDemand[skill] = getMarketDemand(skill);
+                          (skillsData.skillMarketDemand as any)[skill] = getMarketDemand(skill);
                         });
                         skillsData.chartData = [dataPoint];
                         skillsData.topSkills = topSkillsFromLatest;
@@ -967,7 +967,7 @@ export default function DashboardPage() {
                           <Tooltip 
                             formatter={(value: any, name: string) => {
                               const skill = name;
-                              const demand = skillsData.skillMarketDemand[skill];
+                              const demand = (skillsData.skillMarketDemand as any)[skill];
                               return demand 
                                 ? [`${value} times (${demand.toLocaleString()}+ jobs)`, skill]
                                 : [`${value} times`, skill];
@@ -976,7 +976,7 @@ export default function DashboardPage() {
                           <Legend 
                             formatter={(value: string) => {
                               const skill = value.charAt(0).toUpperCase() + value.slice(1);
-                              const demand = skillsData.skillMarketDemand[value];
+                              const demand = (skillsData.skillMarketDemand as any)[value];
                               return demand ? `${skill} (${demand.toLocaleString()}+ jobs)` : skill;
                             }}
                           />
@@ -999,7 +999,7 @@ export default function DashboardPage() {
                             : 'Why these skills matter:'}
                         </p>
                         {skillsData.topSkills.slice(0, 3).map((skill, index) => {
-                          const demand = skillsData.skillMarketDemand[skill];
+                          const demand = (skillsData.skillMarketDemand as any)[skill];
                           const analysis = filteredAnalyses.find((a) => 
                             a.missing_skills?.some((ms: any) => 
                               (ms.skill || ms).toLowerCase() === skill
