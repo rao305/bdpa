@@ -1,54 +1,47 @@
-Machine Learning Engineer - META
-About the Role
-We are seeking a talented Machine Learning Engineer to join our AI team at META. You will work on cutting-edge machine learning systems that impact billions of users worldwide, developing and deploying models across various domains including NLP, computer vision, and recommendation systems.
-Responsibilities
+# Machine Learning Engineering Intern - META
 
-Design, develop, and deploy machine learning models at scale
-Collaborate with cross-functional teams to integrate ML solutions into production systems
-Optimize model performance and system efficiency
-Conduct research and implement state-of-the-art algorithms
-Contribute to the development of ML infrastructure and tooling
+## About the Role
 
-Minimum Qualifications
+We are looking for Machine Learning Engineering interns to join our AI team at META. You'll work alongside experienced engineers on real machine learning projects that help improve our products and services.
 
-Bachelor's degree or above in Computer Science, Machine Learning, AI, or related technical field
-Strong programming skills in Python, C++, or similar languages
-Solid understanding of data structures and algorithms
-Experience with deep learning frameworks (PyTorch, TensorFlow, or similar)
-Hands-on experience in one or more areas: Natural Language Processing (NLP), Computer Vision (CV), Recommendation Systems, or Large Language Models (LLMs)
-Proven ability to develop and deploy ML models in production environments
+## Responsibilities
 
-Preferred Qualifications
+* Assist in developing and testing machine learning models
+* Write clean, efficient code for ML applications
+* Collaborate with team members on ML projects
+* Learn and apply best practices in machine learning engineering
+* Contribute to ongoing research and development initiatives
 
-Advanced degree (Master's or PhD) in Computer Science, Machine Learning, or related field
-Experience working in Linux/Unix environments
-Proficiency in multiple programming languages (Python, Go, C++)
-Published research in top-tier conferences (NeurIps, ICML, CVPR, ACL, KDD, etc.)
-Track record in ML competitions (Kaggle, ACM, etc.)
-Experience with distributed systems and large-scale data processing
-Background in content understanding, search algorithms, multimodal learning, or graph neural networks
-Experience in platform governance, trust & safety, or risk control systems
+## Qualifications
 
-Technical Skills
-Required:
+* Currently pursuing a Bachelor's degree in Computer Science, Data Science, or related field
+* Strong programming skills in Python or C++
+* Understanding of basic data structures and algorithms
+* Coursework or projects involving machine learning concepts
+* Familiarity with at least one area: NLP, Computer Vision, or Recommendation Systems
+* Good problem-solving skills and willingness to learn
 
-Python
-Machine Learning & Deep Learning
-PyTorch or TensorFlow
-Data Structures & Algorithms
-NLP, CV, or Recommendation Systems
+## Nice to Have
 
-Preferred:
+* Experience with PyTorch or TensorFlow
+* Personal projects or coursework using machine learning
+* Participation in coding competitions or hackathons
+* Basic knowledge of Linux/Unix environments
 
-C/C++ or Go
-Large Language Models (LLMs)
-Distributed computing frameworks
-Cloud platforms (AWS, GCP, Azure)
+## Technical Skills
 
-What We Offer
+* Python or C++
+* Data Structures & Algorithms
+* Machine Learning fundamentals
+* One of: NLP, Computer Vision, or Recommendation Systems
 
-Opportunity to work on problems that impact billions of users
-Access to world-class computational resources and datasets
-Collaborative environment with leading researchers and engineers
-Competitive compensation and benefits package
-Professional development and growth opportunities
+## What You'll Gain
+
+* Hands-on experience with real-world ML problems
+* Mentorship from experienced engineers
+* Exposure to large-scale systems and data
+* Collaborative team environment
+
+---
+
+*META is an equal opportunity employer committed to diversity and inclusion in the workplace.*
