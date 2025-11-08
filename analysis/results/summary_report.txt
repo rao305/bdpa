@@ -1,0 +1,34 @@
+================================================================================
+BDPA TECH JOB MARKET - INITIAL DATA EXPLORATION SUMMARY
+================================================================================
+
+Report Generated: 2025-11-05 16:43:37.517925
+
+
+--- DATASETS OVERVIEW ---
+Total datasets: 8
+Total records: 849,594
+
+job_postings: 40,991 rows × 18 columns
+
+job_skills: 354,953 rows × 2 columns
+
+it_jobs: 2,500 rows × 5 columns
+
+linkedin_postings: 370,139 rows × 11 columns
+
+layoffs: 489 rows × 11 columns
+
+layoff_trends: 31 rows × 8 columns
+
+dice_jobs: 22,000 rows × 9 columns
+
+unified_jobs: 58,491 rows × 15 columns
+
+
+--- KEY FINDINGS ---
+
+Median Tech Salary: $98,301
+Remote Work Available: 15.1% of jobs
+
+Total Layoffs Tracked: 138,156 employees
